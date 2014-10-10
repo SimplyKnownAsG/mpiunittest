@@ -1,0 +1,11 @@
+*.pyc
+*.pyo
+*.pyd
+.settings
+.project
+.pydevproject
+*~
+.*.swp
+.kdev/*
+*.kdev4
+
