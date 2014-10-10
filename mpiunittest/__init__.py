@@ -22,6 +22,6 @@ def get_test_program():
   if SIZE <= 2 and RANK == 0:
     return SerialTestProgram()
   elif SIZE > 2 and RANK == 0:
-    return MasterTestProgram
+    return MasterTestProgram()
   return WorkerTestProgram()
 

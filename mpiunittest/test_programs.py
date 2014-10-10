@@ -1,3 +1,5 @@
+import sys
+
 from unittest.main import TestProgram
 
 class SerialTestProgram(TestProgram):
@@ -10,8 +12,8 @@ class SerialTestProgram(TestProgram):
     # prevent __init__ from starting work... this is more complicated.
     pass
 
-  def parse_args(self, argv):
-    TestProgram.parseArgs(self, argv)
+  def parse_args(self):
+    TestProgram.parseArgs(self, sys.argv)
 
   def run_tests(self):
     TestProgram.runTests(self)
@@ -19,17 +21,11 @@ class SerialTestProgram(TestProgram):
 
 class MasterTestProgram(SerialTestProgram):
 
-  def parse_args(self, argv):
-    TestProgram.parseArgs(self, argv)
-
   def run_tests(self):
     pass
     # TestProgram.runTests(self)
 
 class WorkerTestProgram(SerialTestProgram):
-
-  def parse_args(self, argv):
-    TestProgram.parseArgs(self, argv)
 
   def run_tests(self):
     pass
