@@ -10,10 +10,11 @@ def write_suite(number):
       stream.write('\n')
       for tt in range(number):
         stream.write('  def test_{}(self):\n'.format(tt))
-        stream.write('    time.sleep({:.1f})\n'.format(tt / float(number)))
+        stream.write('    time.sleep({:.3f})\n'.format(0.1 * tt / number))
         stream.write('    self.assertEqual({0}, {0})\n'.format(tt))
         stream.write('\n')
 
 if __name__ == '__main__':
   for nn in range(10):
     write_suite(nn)
+
