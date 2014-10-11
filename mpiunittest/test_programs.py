@@ -1,33 +1,30 @@
 import sys
-
 from unittest.main import TestProgram
 
-class SerialTestProgram(TestProgram):
+import mpiunittest as mut
+from mpiunittest import actions
 
-  def parseArgs(self, argv):
-    # allow multiple definitions, and prevent work from occuring immediately
-    pass
+class SerialTestProgram(TestProgram):
+  pass
+
+class MasterTestProgram(TestProgram):
+
+  def __init__(self, **kwargs):
+    kwargs['exit'] = False
+    TestProgram.__init__(self, **kwargs)
 
   def runTests(self):
-    # prevent __init__ from starting work... this is more complicated.
-    pass
-
-  def parse_args(self):
-    TestProgram.parseArgs(self, sys.argv)
-
-  def run_tests(self):
     TestProgram.runTests(self)
+    quit = actions.StopAction()
+    for rank in range(1, mut.SIZE):
+      mut.COMM_WORLD.send(quit, dest=rank)
 
 
-class MasterTestProgram(SerialTestProgram):
+class WorkerTestProgram(TestProgram):
 
-  def run_tests(self):
-    pass
-    # TestProgram.runTests(self)
-
-class WorkerTestProgram(SerialTestProgram):
-
-  def run_tests(self):
-    pass
-    # TestProgram.runTests(self)
+  def runTests(self):
+    not_done = True
+    while not_done:
+      action = mut.COMM_WORLD.recv(None, source=0)
+      not_done = action.invoke()
 
