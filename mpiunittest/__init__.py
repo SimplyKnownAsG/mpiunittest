@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from .test_programs import SerialTestProgram
-from .test_programs import MasterTestProgram
-from .test_programs import WorkerTestProgram
+from .programs import SerialTestProgram
+from .programs import MasterTestProgram
+from .programs import WorkerTestProgram
 
 COMM_WORLD = None
 RANK = 0
