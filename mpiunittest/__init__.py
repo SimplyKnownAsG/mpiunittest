@@ -11,10 +11,10 @@ SIZE = 1
 
 def get_test_program():
   try:
-    from mpi4py.MPI import COMM_WORLD as comm_world
+    from mpi4py import MPI
     
     global COMM_WORLD, RANK, SIZE
-    COMM_WORLD = comm_world
+    COMM_WORLD = MPI.COMM_WORLD
     RANK = COMM_WORLD.Get_rank()
     SIZE = COMM_WORLD.Get_size()
   except ImportError as ie:
