@@ -1,13 +1,13 @@
 
 from unittest import suite
 from unittest import case
+from unittest import runner
 
 import mpiunittest as mut
 from mpiunittest import actions
 
 class SerialTestSuite(suite.TestSuite):
   pass
-
 
 class MasterTestSuite(suite.TestSuite):
 
