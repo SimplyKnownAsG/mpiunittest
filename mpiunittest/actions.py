@@ -14,6 +14,11 @@ class StopAction(Action):
     return False
 
 
+class WaitingAction(Action):
+  def invoke(self):
+    return True
+
+
 class MpiActionError(Exception):
   def __init__(self, received_object):
     Exception.__init__(self,
@@ -55,7 +60,7 @@ class RequestWorkAction(Action):
     try:
       workAction = self._backlog.pop(0)
     except IndexError:
-      workAction = StopAction()
+      workAction = WaitingAction()
     # print('[{}] id:{} len:{} worker_rank:{}, action:{}'
     #       .format(mut.RANK, id(self._backlog), len(self._backlog), self.worker_rank, workAction))
     mut.COMM_WORLD.send(workAction, dest=self.worker_rank)
