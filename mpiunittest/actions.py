@@ -56,7 +56,7 @@ class RequestWorkAction(Action):
       workAction = self._backlog.pop(0)
     except IndexError:
       workAction = StopAction()
-    print('[{}] id:{} len:{} worker_rank:{}, action:{}'
-          .format(mut.RANK, id(self._backlog), len(self._backlog), self.worker_rank, workAction))
+    # print('[{}] id:{} len:{} worker_rank:{}, action:{}'
+    #       .format(mut.RANK, id(self._backlog), len(self._backlog), self.worker_rank, workAction))
     mut.COMM_WORLD.send(workAction, dest=self.worker_rank)
     return True
