@@ -6,12 +6,38 @@ from unittest import runner
 import mpiunittest as mut
 from mpiunittest import actions
 
-class SerialTestSuite(suite.TestSuite):
-  pass
 
-class MasterTestSuite(suite.TestSuite):
+class SerialTestSuite(suite.TestSuite):
+  _instance = None
+  
+  def __init__(self, *args, **kwargs):
+    suite.TestSuite.__init__(self, *args, **kwargs)
+    SerialTestSuite._instance = self
+    self._result = None
+  
+  @classmethod
+  def get_instance(cls):
+    return cls._instance
+
+
+class RunSuiteAction(actions.Action):
+  
+  def __init__(self, suite):
+    self._suite = suite
+  
+  def invoke(self):
+    result = SerialTestSuite.get_instance()._result
+    for test in self._suite:
+      if result.shouldStop:
+        break
+      test(result)
+    return not result.shouldStop
+
+
+class MasterTestSuite(SerialTestSuite):
 
   def run(self, result, debug=False):
+    self._result = result
     suites = self._flatten()
     while len(suites) > 0:
       if result.shouldStop:
@@ -19,19 +45,14 @@ class MasterTestSuite(suite.TestSuite):
       for rank in range(1, mut.SIZE):
         if len(suites) == 0:
           break
-        mut.COMM_WORLD.send(suites.pop(0), dest=rank)
+        suiteAction = RunSuiteAction(suites.pop(0))
+        mut.COMM_WORLD.send(suiteAction, dest=rank)
+      # mut.COMM_WORLD.irecv()
     quit = actions.StopAction()
     for rank in range(1, mut.SIZE):
       mut.COMM_WORLD.send(quit, dest=rank)
     return result
   
-  def invoke(self, result):
-    for test in self:
-      if result.shouldStop:
-        break
-      test(result)
-    return True
-
   def _flatten(self):
     suites = []
     for ss in self:
@@ -42,14 +63,14 @@ class MasterTestSuite(suite.TestSuite):
     return suites
 
 
-class WorkerTestSuite(suite.TestSuite):
+class WorkerTestSuite(SerialTestSuite):
 
   def run(self, result, debug=False):
+    self._result = result
     not_done = True
     while not_done:
       action = mut.COMM_WORLD.recv(None, source=0)
-      try:
-        not_done = action.invoke()
-      except:
-        not_done = action.invoke(result)
+      if not isinstance(action, actions.Action):
+        raise actions.MpiActionError(action)
+      not_done = action.invoke()
 

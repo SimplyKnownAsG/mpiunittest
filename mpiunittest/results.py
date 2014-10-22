@@ -1,181 +1,84 @@
+from __future__ import absolute_import
+
 from unittest import runner
 from unittest import result
 
-class SerialTestResultHandler(runner.TextTestResult):
-  pass
+import mpiunittest
+from . import actions
+
+
+class ResultAction(actions.Action):
+  
+  def __init__(self, test, method, err, reason):
+    self._test = test
+    self._method = method
+    self._err = err
+    self._reason = reason
+  
+  def invoke(self):
+    handler = self.get_instance()
+    method = getattr(handler, self._method)
+    args = [aa for aa in (self._method, self._err, self._reason)
+            if aa is not None]
+    method(*args)
+
+
+class SerialTestResultHandler(result.TestResult):
+  
+  _hanlder = None
+  
+  @classmethod
+  def get_instance(cls):
+    return cls._instance
+
+  def __init__(self, stream, descriptions, verbosity):
+    SerialTestResultHandler._instance = self
+    result.TestResult.__init__(self, stream, descriptions, verbosity)
 
 
 class MasterTestResultHandler(result.TestResult):
-  """A test result class that can print formatted text results to a stream.
+  pass
 
-  Used by TextTestRunner.
-  """
-  separator1 = '=' * 70
-  separator2 = '-' * 70
+
+class WorkerTestResultHandler(SerialTestResultHandler):
 
   def __init__(self, stream, descriptions, verbosity):
-    result.TestResult.__init__(self, stream, descriptions, verbosity)
+    SerialTestResultHandler.__init__(self, stream, descriptions, verbosity)
     self.stream = stream
     self.showAll = verbosity > 1
     self.dots = verbosity == 1
     self.descriptions = descriptions
 
   def getDescription(self, test):
-    doc_first_line = test.shortDescription()
-    if self.descriptions and doc_first_line:
-      return '\n'.join((str(test), doc_first_line))
-    else:
-      return str(test)
-
-  def startTest(self, test):
-    result.TestResult.startTest(self, test)
-    if self.showAll:
-      self.stream.write(self.getDescription(test))
-      self.stream.write(" ... ")
-      self.stream.flush()
+    action = ResultAction(test, 'getDescription', None, None)
+    mpiunittest.COMM_WORLD.send(action, dest=0)
 
   def addSuccess(self, test):
-    result.TestResult.addSuccess(self, test)
-    if self.showAll:
-      self.stream.writeln("ok")
-    elif self.dots:
-      self.stream.write('.')
-      self.stream.flush()
+    action = ResultAction(test, 'addSuccess', None, None)
+    mpiunittest.COMM_WORLD.send(action, dest=0)
 
   def addError(self, test, err):
-    result.TestResult.addError(self, test, err)
-    if self.showAll:
-      self.stream.writeln("ERROR")
-    elif self.dots:
-      self.stream.write('E')
-      self.stream.flush()
+    action = ResultAction(test, 'addError', err, None)
+    mpiunittest.COMM_WORLD.send(action, dest=0)
 
   def addFailure(self, test, err):
-    result.TestResult.addFailure(self, test, err)
-    if self.showAll:
-      self.stream.writeln("FAIL")
-    elif self.dots:
-      self.stream.write('F')
-      self.stream.flush()
+    action = ResultAction(test, 'addFailure', err, None)
+    mpiunittest.COMM_WORLD.send(action, dest=0)
 
   def addSkip(self, test, reason):
-    result.TestResult.addSkip(self, test, reason)
-    if self.showAll:
-      self.stream.writeln("skipped {0!r}".format(reason))
-    elif self.dots:
-      self.stream.write("s")
-      self.stream.flush()
+    action = ResultAction(test, 'addSkip', None, reason)
+    mpiunittest.COMM_WORLD.send(action, dest=0)
 
   def addExpectedFailure(self, test, err):
-    result.TestResult.addExpectedFailure(self, test, err)
-    if self.showAll:
-      self.stream.writeln("expected failure")
-    elif self.dots:
-      self.stream.write("x")
-      self.stream.flush()
+    action = ResultAction(test, 'addExpectedFailure', err, None)
+    mpiunittest.COMM_WORLD.send(action, dest=0)
 
   def addUnexpectedSuccess(self, test):
-    result.TestResult.addUnexpectedSuccess(self, test)
-    if self.showAll:
-      self.stream.writeln("unexpected success")
-    elif self.dots:
-      self.stream.write("u")
-      self.stream.flush()
+    action = ResultAction(test, 'addUnexpectedSuccess', None, None)
+    mpiunittest.COMM_WORLD.send(action, dest=0)
 
   def printErrors(self):
-    if self.dots or self.showAll:
-      self.stream.writeln()
-    self.printErrorList('ERROR', self.errors)
-    self.printErrorList('FAIL', self.failures)
+    pass
 
   def printErrorList(self, flavour, errors):
-    for test, err in errors:
-      self.stream.writeln(self.separator1)
-      self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
-      self.stream.writeln(self.separator2)
-      self.stream.writeln("%s" % err)
-
-
-class WorkerTestResultHandler(result.TestResult):
-
-  def __init__(self, stream, descriptions, verbosity):
-    result.TestResult.__init__(self, stream, descriptions, verbosity)
-    self.stream = stream
-    self.showAll = verbosity > 1
-    self.dots = verbosity == 1
-    self.descriptions = descriptions
-
-  def getDescription(self, test):
-    doc_first_line = test.shortDescription()
-    if self.descriptions and doc_first_line:
-      return '\n'.join((str(test), doc_first_line))
-    else:
-      return str(test)
-
-  def startTest(self, test):
-    result.TestResult.startTest(self, test)
-    if self.showAll:
-      self.stream.write(self.getDescription(test))
-      self.stream.write(" ... ")
-      self.stream.flush()
-
-  def addSuccess(self, test):
-    result.TestResult.addSuccess(self, test)
-    if self.showAll:
-      self.stream.writeln("ok")
-    elif self.dots:
-      self.stream.write('.')
-      self.stream.flush()
-
-  def addError(self, test, err):
-    result.TestResult.addError(self, test, err)
-    if self.showAll:
-      self.stream.writeln("ERROR")
-    elif self.dots:
-      self.stream.write('E')
-      self.stream.flush()
-
-  def addFailure(self, test, err):
-    result.TestResult.addFailure(self, test, err)
-    if self.showAll:
-      self.stream.writeln("FAIL")
-    elif self.dots:
-      self.stream.write('F')
-      self.stream.flush()
-
-  def addSkip(self, test, reason):
-    result.TestResult.addSkip(self, test, reason)
-    if self.showAll:
-      self.stream.writeln("skipped {0!r}".format(reason))
-    elif self.dots:
-      self.stream.write("s")
-      self.stream.flush()
-
-  def addExpectedFailure(self, test, err):
-    result.TestResult.addExpectedFailure(self, test, err)
-    if self.showAll:
-      self.stream.writeln("expected failure")
-    elif self.dots:
-      self.stream.write("x")
-      self.stream.flush()
-
-  def addUnexpectedSuccess(self, test):
-    result.TestResult.addUnexpectedSuccess(self, test)
-    if self.showAll:
-      self.stream.writeln("unexpected success")
-    elif self.dots:
-      self.stream.write("u")
-      self.stream.flush()
-
-  def printErrors(self):
-    if self.dots or self.showAll:
-      self.stream.writeln()
-    self.printErrorList('ERROR', self.errors)
-    self.printErrorList('FAIL', self.failures)
-
-  def printErrorList(self, flavour, errors):
-    for test, err in errors:
-      self.stream.writeln(self.separator1)
-      self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
-      self.stream.writeln(self.separator2)
-      self.stream.writeln("%s" % err)
+    pass
