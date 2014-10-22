@@ -43,14 +43,12 @@ class MasterTestSuite(SerialTestSuite):
           .format(len(suites), mut.SIZE - 1))
     for suite in suites:
       actions.RequestWorkAction.add_work(RunSuiteAction(suite))
-    not_done = [False] + [True for _ in range(1, mut.SIZE)]
     while actions.RequestWorkAction._backlog:
       for rank in range(1, mut.SIZE):
         workRequest = mut.COMM_WORLD.recv(None, source=rank)
         if not isinstance(workRequest, actions.Action):
           raise actions.MpiActionError(workRequest)
-        not_done[rank] = workRequest.invoke()
-        print(not_done)
+        workRequest.invoke()
     for _ in range(1, mut.SIZE):
       mut.COMM_WORLD.send(actions.StopAction(), dest=_)
     print('done\n' * 10)
@@ -69,14 +67,14 @@ class MasterTestSuite(SerialTestSuite):
 class WorkerTestSuite(SerialTestSuite):
 
   def run(self, result, debug=False):
-    result._original_stdout.write('[{:0>3}] running\n'.format(mut.RANK))
+    # result._original_stdout.write('[{:0>3}] running\n'.format(mut.RANK))
     self._result = result
     not_done = True
     while not_done:
-      result._original_stdout.write('[{:0>3}] sending request\n'.format(mut.RANK))
+      # result._original_stdout.write('[{:0>3}] sending request\n'.format(mut.RANK))
       mut.COMM_WORLD.send(actions.RequestWorkAction())
       action = mut.COMM_WORLD.recv(None, source=0)
-      result._original_stdout.write('[{:0>3}] received {}\n'.format(mut.RANK, action))
+      # result._original_stdout.write('[{:0>3}] received {}\n'.format(mut.RANK, action))
       if not isinstance(action, actions.Action):
         raise actions.MpiActionError(action)
       not_done = action.invoke()

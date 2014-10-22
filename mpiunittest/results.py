@@ -9,9 +9,9 @@ from . import actions
 
 class ResultAction(actions.Action):
   
-  def __init__(self, test, method, err, reason):
+  def __init__(self, test, method_name, err, reason):
     self._test = test
-    self._method = method
+    self._method = method_name
     self._err = err
     self._reason = reason
   
@@ -20,25 +20,22 @@ class ResultAction(actions.Action):
     method = getattr(handler, self._method)
     args = [aa for aa in (self._method, self._err, self._reason)
             if aa is not None]
+    #print('[{:0>3}] result_action: {}'.format(mpiunittest.RANK, self._method))
     method(*args)
     return True
 
 
-class SerialTestResultHandler(result.TestResult):
+class SerialTestResultHandler(runner.TextTestResult):
   
   _instance = None
   
   def __init__(self, *args, **kwargs):
-    result.TestResult.__init__(self, *args, **kwargs)
+    runner.TextTestResult.__init__(self, *args, **kwargs)
     SerialTestResultHandler._instance = self
   
   @classmethod
   def get_instance(cls):
     return cls._instance
-
-  def __init__(self, stream, descriptions, verbosity):
-    SerialTestResultHandler._instance = self
-    result.TestResult.__init__(self, stream, descriptions, verbosity)
 
 
 class MasterTestResultHandler(SerialTestResultHandler):
@@ -53,10 +50,6 @@ class WorkerTestResultHandler(SerialTestResultHandler):
     self.showAll = verbosity > 1
     self.dots = verbosity == 1
     self.descriptions = descriptions
-
-  def getDescription(self, test):
-    action = ResultAction(test, 'getDescription', None, None)
-    mpiunittest.COMM_WORLD.send(action, dest=0)
 
   def addSuccess(self, test):
     action = ResultAction(test, 'addSuccess', None, None)
