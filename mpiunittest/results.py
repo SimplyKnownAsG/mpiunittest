@@ -16,16 +16,21 @@ class ResultAction(actions.Action):
     self._reason = reason
   
   def invoke(self):
-    handler = self.get_instance()
+    handler = SerialTestResultHandler.get_instance()
     method = getattr(handler, self._method)
     args = [aa for aa in (self._method, self._err, self._reason)
             if aa is not None]
     method(*args)
+    return True
 
 
 class SerialTestResultHandler(result.TestResult):
   
-  _hanlder = None
+  _instance = None
+  
+  def __init__(self, *args, **kwargs):
+    result.TestResult.__init__(self, *args, **kwargs)
+    SerialTestResultHandler._instance = self
   
   @classmethod
   def get_instance(cls):
@@ -36,7 +41,7 @@ class SerialTestResultHandler(result.TestResult):
     result.TestResult.__init__(self, stream, descriptions, verbosity)
 
 
-class MasterTestResultHandler(result.TestResult):
+class MasterTestResultHandler(SerialTestResultHandler):
   pass
 
 
