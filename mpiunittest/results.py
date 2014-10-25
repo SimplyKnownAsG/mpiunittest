@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
+import time
 from unittest import runner
 from unittest import result
+import cStringIO
 
 import mpiunittest
 from . import actions
@@ -25,6 +27,17 @@ class ResultAction(actions.Action):
     return True
 
 
+class SimpleResultAction(actions.Action):
+  
+  def __init__(self, message):
+    self._message = message
+  
+  def invoke(self):
+    handler = SerialTestResultHandler.get_instance()
+    handler.printResult(self._message)
+    return True
+
+
 class SerialTestResultHandler(runner.TextTestResult):
   
   _instance = None
@@ -39,41 +52,46 @@ class SerialTestResultHandler(runner.TextTestResult):
 
 
 class MasterTestResultHandler(SerialTestResultHandler):
-  pass
+
+  def printResult(self, message):
+    self.stream.write(message)
 
 
 class WorkerTestResultHandler(SerialTestResultHandler):
 
   def __init__(self, stream, descriptions, verbosity):
     SerialTestResultHandler.__init__(self, stream, descriptions, verbosity)
-    self.stream = stream
-    self.showAll = verbosity > 1
-    self.dots = verbosity == 1
-    self.descriptions = descriptions
-
-  def addSuccess(self, test):
-    action = ResultAction(test, 'addSuccess', None, None)
+  
+  def _flushStream(self):
+    message = self.stream.getvalue()
+    del(self.stream)
+    self.stream = runner._WritelnDecorator(cStringIO.StringIO())
+    action = SimpleResultAction(message)
     mpiunittest.COMM_WORLD.send(action, dest=0)
+  
+  def addSuccess(self, test):
+    SerialTestResultHandler.addSuccess(self, test)
+    self._flushStream()
 
   def addError(self, test, err):
-    action = ResultAction(test, 'addError', err, None)
-    mpiunittest.COMM_WORLD.send(action, dest=0)
+    SerialTestResultHandler.addError(self, test, err)
+    self._flushStream()
 
   def addFailure(self, test, err):
-    action = ResultAction(test, 'addFailure', err, None)
-    mpiunittest.COMM_WORLD.send(action, dest=0)
+    SerialTestResultHandler.addFailure(self, test, err)
+    self._flushStream()
 
   def addSkip(self, test, reason):
-    action = ResultAction(test, 'addSkip', None, reason)
-    mpiunittest.COMM_WORLD.send(action, dest=0)
+    SerialTestResultHandler.addSkip(self, test, reason)
+    self._flushStream()
 
   def addExpectedFailure(self, test, err):
-    action = ResultAction(test, 'addExpectedFailure', err, None)
-    mpiunittest.COMM_WORLD.send(action, dest=0)
+    SerialTestResultHandler.addSkip(self, test, reason)
+    self._flushStream()
 
   def addUnexpectedSuccess(self, test):
-    action = ResultAction(test, 'addUnexpectedSuccess', None, None)
-    mpiunittest.COMM_WORLD.send(action, dest=0)
+    SerialTestResultHandler.addUnexpectedSuccess(self, test)
+    self._flushStream()
 
   def printErrors(self):
     pass
