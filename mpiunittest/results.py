@@ -9,24 +9,6 @@ import mpiunittest
 from . import actions
 
 
-class ResultAction(actions.Action):
-  
-  def __init__(self, test, method_name, err, reason):
-    self._test = test
-    self._method = method_name
-    self._err = err
-    self._reason = reason
-  
-  def invoke(self):
-    handler = SerialTestResultHandler.get_instance()
-    method = getattr(handler, self._method)
-    args = [aa for aa in (self._method, self._err, self._reason)
-            if aa is not None]
-    #print('[{:0>3}] result_action: {}'.format(mpiunittest.RANK, self._method))
-    method(*args)
-    return True
-
-
 class SimpleResultAction(actions.Action):
   
   def __init__(self, message):
@@ -49,6 +31,45 @@ class SerialTestResultHandler(runner.TextTestResult):
   @classmethod
   def get_instance(cls):
     return cls._instance
+
+  def summarizeResults(self, timeTaken):
+    self.printErrors()
+    if hasattr(self, 'separator2'):
+      self.stream.writeln(self.separator2)
+    run = self.testsRun
+    self.stream.writeln("Ran %d test%s in %.4fs" %
+                        (run, run != 1 and "s" or "", timeTaken))
+    self.stream.writeln()
+
+    expectedFails = unexpectedSuccesses = skipped = 0
+    try:
+      expectedFailures = len(self.expectedFailures)
+      unexpectedSuccesses = len(self.unexpectedSuccesses)
+      skipped = len(self.skipped)
+    except AttributeError:
+      pass
+
+    infos = []
+    if not self.wasSuccessful():
+      self.stream.write("FAILED")
+      failed, errored = map(len, (self.failures, self.errors))
+      if failed:
+        infos.append("failures=%d" % failed)
+      if errored:
+        infos.append("errors=%d" % errored)
+    else:
+      self.stream.write("OK")
+    if skipped:
+      infos.append("skipped=%d" % skipped)
+    if expectedFails:
+      infos.append("expected failures=%d" % expectedFails)
+    if unexpectedSuccesses:
+      infos.append("unexpected successes=%d" % unexpectedSuccesses)
+    if infos:
+      self.stream.writeln(" (%s)" % (", ".join(infos),))
+    else:
+      self.stream.write("\n")
+
 
 
 class MasterTestResultHandler(SerialTestResultHandler):

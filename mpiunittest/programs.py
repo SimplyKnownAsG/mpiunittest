@@ -16,11 +16,11 @@ class MasterTestProgram(TestProgram):
 
   def __init__(self):
     loader.TestLoader.suiteClass = suites.MasterTestSuite
-    TestProgram.__init__(self, exit=False, testRunner=runners.MasterTestRunner)
+    TestProgram.__init__(self, exit=False, testRunner=runners.MpiTestRunner)
 
 class WorkerTestProgram(TestProgram):
 
   def __init__(self):
     loader.TestLoader.suiteClass = suites.WorkerTestSuite
-    TestProgram.__init__(self, exit=False, testRunner=runners.WorkerTestRunner)
+    TestProgram.__init__(self, exit=False, testRunner=runners.MpiTestRunner)
 

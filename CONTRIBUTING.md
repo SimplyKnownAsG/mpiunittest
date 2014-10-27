@@ -14,11 +14,15 @@ Project Structure
 
 The project structure is this:
 
-{{{
   ./mpiunittest/ -- source files, the "actual" package
-  ./mpiunittest_tests/ -- unit tests for this mpiunittest.
-  ./sample_tests/ -- sample tests, used in mpiunittest_tests.
-}}}
+  ./sample_tests/ -- sample tests.
 
-If you're confused, then that's what you are.
+Running tests
+=============
 
+From the command line:
+
+  $ mpiexec -n 5 python -m mpiunittest discover -s sample_tests/
+
+The command line options from `unittest` are also supported, such as `-b` and
+`-v`. 
