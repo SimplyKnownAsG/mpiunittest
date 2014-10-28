@@ -49,10 +49,14 @@ Features
     [-] Fully compatible with `unittest`
         [X] Things I think are working
         [ ] Error conditions are properly handled. Not currently tested... oops
-    [x] Only one process writes to the standard stream, so the output does not
+    [X] Only one process writes to the standard stream, so the output does not
         appear garbled.
     [ ] Custom decorators -- I think they will need to be class decorators
-        [ ] `@mut.mut(<# of processors>)`
+        [ ] `@mut.mut(<# of processors>)` -- runs the test class with the
+            specified number of processors, or skips the test if there are not
+            enough processors
+        [ ] `@mut.long(<ranking>)` -- indicates the test class takes a long
+            time to run. Highest rank is run first.
     [ ] Asynchronous MPI. -- The master process is not asynchronous, which
         basically defeats the whole purpose, because the longest running test
         will still hold up the entire testing process.
