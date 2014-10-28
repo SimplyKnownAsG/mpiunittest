@@ -57,6 +57,5 @@ Features
             enough processors
         [ ] `@mut.long(<ranking>)` -- indicates the test class takes a long
             time to run. Highest rank is run first.
-    [X] Asynchronous MPI. -- The master process is not asynchronous, which
-        basically defeats the whole purpose, because the longest running test
-        will still hold up the entire testing process.
+    [X] Asynchronous MPI. -- The master node asynchronously distributes tasks
+        to the workers nodes.
