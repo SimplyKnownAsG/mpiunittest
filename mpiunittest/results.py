@@ -58,9 +58,9 @@ class SerialTestResultHandler(runner.TextTestResult):
   def _printInfos_HASHTAG_BadName(self):
     details = [('failures', len(self.failures)),
                ('errors', len(self.errors)),
-               ('skipped', mut.mpi_sum(self.skipped)),
-               ('expected failures', mut.mpi_sum(self.expectedFailures)),
-               ('unexpected successes', mut.mpi_sum(self.unexpectedSuccesses))
+               ('skipped', mut.mpi_length(self.skipped)),
+               ('expected failures', mut.mpi_length(self.expectedFailures)),
+               ('unexpected successes', mut.mpi_length(self.unexpectedSuccesses))
               ]
     msg = ('{} ({})'
            .format('OK' if self.wasSuccessful() else 'FAILED',
