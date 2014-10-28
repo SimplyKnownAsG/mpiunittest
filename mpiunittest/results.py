@@ -36,12 +36,18 @@ class SerialTestResultHandler(runner.TextTestResult):
     self.printErrors()
     self._printTestsPerSecond(timeTaken)
     self._printInfos_HASHTAG_BadName()
+  
+  def flush(self):
+    self.stream.write('\n')
+    self.stream.flush()
     
   def printErrors(self):
-    self.errors = mut.mpi_flatten_gather(self.errors)
-    self.failures = mut.mpi_flatten_gather(self.failures)
-    if mut.RANK == 0:
+    message = ''
+    self.flush()
+    if mut.RANK != 0:
       runner.TextTestResult.printErrors(self)
+      message = self.stream.getvalue()
+    mut.mpi_log(self.stream, message)
     
   def _printTestsPerSecond(self, timeTaken):
     if hasattr(self, 'separator2'):
@@ -56,15 +62,17 @@ class SerialTestResultHandler(runner.TextTestResult):
     mut.mpi_log(self.stream, msg_prefix + msg)
 
   def _printInfos_HASHTAG_BadName(self):
-    details = [('failures', len(self.failures)),
-               ('errors', len(self.errors)),
+    details = [('failures', mut.mpi_length(self.failures)),
+               ('errors', mut.mpi_length(self.errors)),
                ('skipped', mut.mpi_length(self.skipped)),
                ('expected failures', mut.mpi_length(self.expectedFailures)),
                ('unexpected successes', mut.mpi_length(self.unexpectedSuccesses))
               ]
     msg = ('{} ({})'
-           .format('OK' if self.wasSuccessful() else 'FAILED',
+           .format('OK' if details[0][1] < 1 or details[1][1] < 1 else 'FAILED',
                    ', '.join('{}={}'.format(nn, cc) for nn, cc in details)))
+    if mut.RANK == 0:
+      msg = 'summary: ' + msg
     mut.mpi_log(self.stream, msg)
 
 
@@ -77,13 +85,17 @@ class MasterTestResultHandler(SerialTestResultHandler):
 class WorkerTestResultHandler(SerialTestResultHandler):
 
   def __init__(self, stream, descriptions, verbosity):
-    SerialTestResultHandler.__init__(self, stream, descriptions, verbosity) 
+    SerialTestResultHandler.__init__(self, stream, descriptions, verbosity)
+
   def _flushStream(self):
     message = self.stream.getvalue()
-    del(self.stream)
-    self.stream = runner._WritelnDecorator(cStringIO.StringIO())
     action = SimpleResultAction(message)
     mut.COMM_WORLD.send(action, dest=0)
+    self.flush()
+  
+  def flush(self):
+    del(self.stream)
+    self.stream = runner._WritelnDecorator(cStringIO.StringIO())
   
   def addSuccess(self, test):
     SerialTestResultHandler.addSuccess(self, test)

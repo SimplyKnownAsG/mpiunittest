@@ -48,7 +48,9 @@ Features
 
     [-] Fully compatible with `unittest`
         [X] Things I think are working
-        [ ] Error conditions are properly handled. Not currently tested... oops
+        [X] Error conditions are properly handled.
+        [ ] Not sure about skips
+        [ ] Not sure what happens when result.shouldStop
     [X] Only one process writes to the standard stream, so the output does not
         appear garbled.
     [ ] Custom decorators -- I think they will need to be class decorators
