@@ -4,17 +4,29 @@ def write_suite(number):
     stream.write('import unittest\n')
     stream.write('import time\n')
     stream.write('\n')
-    for ss in range(number):
-      stream.write('class Suite{}_{}Tests(unittest.TestCase):\n'
-                   .format(number, ss))
-      stream.write('\n')
-      for tt in range(number):
-        stream.write('  def test_{}(self):\n'.format(tt))
-        stream.write('    time.sleep({:.3f})\n'.format(0.1 * tt / number))
-        stream.write('    self.assertEqual({0}, {0})\n'.format(tt))
-        stream.write('\n')
+    write_test_suite(stream, number)
 
+def write_test_suite(stream, number):
+  for ss in range(number):
+    stream.write('class Suite{}_{}Tests(unittest.TestCase):\n'
+                 .format(number, ss))
+    stream.write('\n')
+    write_test_cases(stream, number)
+
+def write_test_cases(stream, number, mult=0.1):
+  for tt in range(number):
+    stream.write('  def test_{}(self):\n'.format(tt))
+    stream.write('    time.sleep({:.3f})\n'.format(mult * tt / number))
+    stream.write('    self.assertEqual({0}, {0})\n'.format(tt))
+    stream.write('\n')
+ 
 if __name__ == '__main__':
   for nn in range(10):
     write_suite(nn)
+  with open('test_long.py', 'w') as stream:
+    stream.write('import unittest\n')
+    stream.write('import time\n')
+    stream.write('\n')
+    stream.write('class LongTestSuite(unittest.TestCase):\n')
+    write_test_cases(stream, 10, 3)
 

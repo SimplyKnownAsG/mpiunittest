@@ -43,15 +43,16 @@ class MasterTestSuite(SerialTestSuite):
           .format(len(suites), mut.SIZE - 1))
     for suite in suites:
       actions.RequestWorkAction.add_work(RunSuiteAction(suite))
-    while actions.RequestWorkAction._backlog:
+    waiting = [True] + [False for _ in range(1, mut.SIZE)]
+    while actions.RequestWorkAction._backlog or not all(waiting):
       for rank in range(1, mut.SIZE):
         workRequest = mut.COMM_WORLD.recv(None, source=rank)
         if not isinstance(workRequest, actions.Action):
           raise actions.MpiActionError(workRequest)
         workRequest.invoke()
+        waiting[rank] = isinstance(workRequest, actions.RequestWorkAction)
     for _ in range(1, mut.SIZE):
       mut.COMM_WORLD.send(actions.StopAction(), dest=_)
-    print('done\n' * 10)
     return result
   
   def _flatten(self):
