@@ -38,7 +38,7 @@ Run a specific test file
 Please refer to notes on parallelism from above. Basically, unless there are a
 bunch of `unittest.TestCase`s in a specific test file, you'd be better off just
 using `python -m unittest $*`, where `$*` is all subsequent arguments. Now,
-`MUT` should nearly as fast as `unittest` in all instances, but there is some
+`MUT` should be nearly as fast as `unittest` in all instances, but there is some
 additional overhead.
 
     $ mpiexec -n 5 python -m mpiunittest "a specific test file"
