@@ -29,4 +29,45 @@ if __name__ == '__main__':
     stream.write('\n')
     stream.write('class LongTestSuite(unittest.TestCase):\n')
     write_test_cases(stream, 10, 3)
+  with open('test_errors_and_failures.py', 'w') as stream:
+    stream.write('import unittest\n')
+    stream.write('''
+
+class TestErrors(unittest.TestCase):
+  def test_error(self):
+    raise Exception('this is intentional!')
+
+
+class TestFailures(unittest.TestCase):
+  def test_fails(self):
+    self.assertEqual(1, 2, 'intentional failure')
+
+
+class TestPasses(unittest.TestCase):
+  def test_passes(self):
+    self.assertEqual(1, 1)
+
+
+class SetUpError(TestPasses):
+  def setUp(self):
+    raise Exception('Intentional exception')
+
+
+class SetUpClassError(TestPasses):
+  @classmethod
+  def setUpClass(cls):
+    raise Exception('Intentional exception')
+
+
+class TearDownError(TestPasses):
+  def tearDown(self):
+    raise Exception('Intentional exception')
+
+
+class TearDownClassError(TestPasses):
+  @classmethod
+  def tearDownClass(cls):
+    raise Exception('Intentional exception')
+''')
+
 
