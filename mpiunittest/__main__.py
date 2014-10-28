@@ -22,7 +22,7 @@ if __name__ == '__main__':
   try:
     test_program = get_test_program()
   except Exception as ee:
-    print('Something bad happened!')
+    print('Something bad happened on {}!'.format(mpiunittest.RANK))
     print(ee)
     traceback.print_exc()
     if mpiunittest.SIZE > 0:

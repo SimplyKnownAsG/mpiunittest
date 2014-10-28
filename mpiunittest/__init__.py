@@ -11,3 +11,33 @@ try:
   SIZE = COMM_WORLD.Get_size()
 except ImportError as ie:
   pass
+
+def mpi_flatten_gather(iterable):
+  '''Performs an MPI gather operation for a series of iterables. A flattened
+  list is returned for the master node, worker nodes are returned the original
+  object
+  '''
+  it_of_its = COMM_WORLD.gather(iterable, root=0)
+  if RANK == 0:
+    return [ii for ii_col in it_of_its for ii in ii_col]
+  else:
+    return iterable
+
+def mpi_length(iterable):
+  '''Peforms an MPI gather operation which returns the length of all items. For
+  the master node this is the sum of all lengths, the worker nodes will get the
+  length of their own iterable.
+  '''
+  length = len(iterable)
+  lengths = COMM_WORLD.gather(length, root=0)
+  if RANK == 0:
+    return sum(lengths)
+  else:
+    return length
+
+def mpi_log(stream, content):
+  msg = '[mut.{:0>3}] {}\n'.format(RANK, content)
+  messages = COMM_WORLD.gather(msg, root=0)
+  if RANK == 0:
+    for msg in messages:
+      stream.write(msg)
