@@ -45,6 +45,14 @@ class RunSuiteAction(actions.Action):
       try:
         method()
       except:
+        if not hasattr(sys.stdout, 'getvalue'):
+          sys.stdout = cStringIO.StringIO()
+          sys.stdout.write('[mut.{:0>3}] sys.stdout has been modified'
+                           .format(mut.RANK))
+        if not hasattr(sys.stderr, 'getvalue'):
+          sys.stderr = cStringIO.StringIO()
+          sys.stderr.write('[mut.{:0>3}] sys.stderr has been modified'
+                           .format(mut.RANK))
         result.addError(test, sys.exc_info())
       finally:
         sys.stdout = sys.__stdout__
