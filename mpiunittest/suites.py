@@ -1,4 +1,6 @@
 
+import sys
+import cStringIO
 from unittest import suite
 from unittest import case
 from unittest import runner
@@ -28,19 +30,28 @@ class RunSuiteAction(actions.Action):
   def invoke(self):
     result = SerialTestSuite.get_instance()._result
     for test in self._suite:
+      self.tryClassSetUpOrTearDown(test, result, 'setUpClass')
       if result.shouldStop:
         break
       test(result)
+      self.tryClassSetUpOrTearDown(test, result, 'tearDownClass')
     return not result.shouldStop
 
+  def tryClassSetUpOrTearDown(self, test, result, methodName):
+    method = getattr(test, methodName, None)
+    if method is not None:
+      sys.stdout = cStringIO.StringIO()
+      sys.stderr = cStringIO.StringIO()
+      try:
+        method()
+      except:
+        result.addError(test, sys.exc_info())
+      finally:
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
+    
 
 class MasterTestSuite(SerialTestSuite):
-  
-  # def __init__(self, *args, **kwargs):
-  #   SerialTestSuite.__init__(self, *args, **kwargs)
-  #   self._mpi_requests = {}
-  #   for rank in range(1, mut.SIZE - 1):
-  #     self._replace_request(rank)
 
   def run(self, result, debug=False):
     self._result = result
@@ -63,14 +74,6 @@ class MasterTestSuite(SerialTestSuite):
       mut.COMM_WORLD.send(actions.StopAction(), dest=_)
     return result
   
-  def _replace_request(self, rank):
-    mpi_req = self._mpi_requests.get(rank, None)
-    if mpi_req is not None:
-      mpi_req.Cancel()
-      mpi_req.Free()
-    self._mpi_requests[rank] = mut.COMM_WORLD.irecv(None, dest=rank)
-    print('replacing {}.. {}'.format(rank, self._mpi_requests[rank]))
-  
   def _flatten(self):
     suites = []
     for ss in self:
@@ -84,11 +87,9 @@ class MasterTestSuite(SerialTestSuite):
 class WorkerTestSuite(SerialTestSuite):
 
   def run(self, result, debug=False):
-    # result._original_stdout.write('[{:0>3}] running\n'.format(mut.RANK))
     self._result = result
     not_done = True
     while not_done:
-      # result._original_stdout.write('[{:0>3}] sending request\n'.format(mut.RANK))
       mut.COMM_WORLD.send(actions.RequestWorkAction())
       action = mut.COMM_WORLD.recv(None, source=0)
       # result._original_stdout.write('[{:0>3}] received {}\n'.format(mut.RANK, action))
