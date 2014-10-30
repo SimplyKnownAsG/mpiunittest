@@ -68,8 +68,9 @@ class SerialTestResultHandler(runner.TextTestResult):
                ('expected failures', mut.mpi_length(self.expectedFailures)),
                ('unexpected successes', mut.mpi_length(self.unexpectedSuccesses))
               ]
+    short_result = 'OK' if details[0][1] < 1 and details[1][1] < 1 else 'FAILED'
     msg = ('{} ({})'
-           .format('OK' if details[0][1] < 1 or details[1][1] < 1 else 'FAILED',
+           .format(short_result,
                    ', '.join('{}={}'.format(nn, cc) for nn, cc in details)))
     if mut.RANK == 0:
       msg = 'summary: ' + msg
