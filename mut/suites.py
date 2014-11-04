@@ -1,12 +1,14 @@
 
+from __future__ import absolute_import
+
 import sys
 import cStringIO
 from unittest import suite
 from unittest import case
 from unittest import runner
 
-import mpiunittest as mut
-from mpiunittest import actions
+import mut
+from . import actions
 
 
 class SerialTestSuite(suite.TestSuite):

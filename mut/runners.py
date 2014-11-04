@@ -6,7 +6,7 @@ from unittest import runner
 import cStringIO
 import timeit
 
-import mpiunittest as mut
+import mut
 from . import results
 
 

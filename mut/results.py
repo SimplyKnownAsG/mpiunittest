@@ -1,3 +1,4 @@
+
 from __future__ import absolute_import
 
 import time
@@ -5,7 +6,7 @@ from unittest import runner
 from unittest import result
 import cStringIO
 
-import mpiunittest as mut
+import mut
 from . import actions
 
 

@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import
 
-import mpiunittest as mut
+import mut
 
 class Action(object):
 
