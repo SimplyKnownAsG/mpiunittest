@@ -19,9 +19,8 @@ class MpiUnitTestTests(unittest.TestCase):
 
   @classmethod
   def tearDownClass(cls):
-    return
     if mut.RANK == 0:
-      for test_file in glob.glob('sample_*.py'):
+      for test_file in glob.glob(SuiteWriter.file_prefix + '*'):
         os.remove(test_file)
 
   def tearDown(self):
@@ -44,6 +43,7 @@ class MpiUnitTestTests(unittest.TestCase):
     self._check_results_for_failures(result)
     self.assertEqual(result.testsRun, 10 if mut.RANK > 0 else 0)
 
+  @unittest.skip('i do whut i waunt')
   def test_unequalDistribution(self):
     if mut.RANK == 0:
       sw = SuiteWriter(mut.SIZE - 2, 20, 5.0)
@@ -63,6 +63,10 @@ class MpiUnitTestTests(unittest.TestCase):
     self.assertEqual(result.testsRun, 10 if mut.RANK > 0 else 0)
 
 class SuiteWriter(object):
+  
+  file_prefix = 'sample_'
+  _file_num = 0
+  
   def __init__(self, num_suites, tests_per_suite, seconds_per_suite):
     self._num_suites = num_suites
     self._tests_per_suite = tests_per_suite
@@ -70,7 +74,8 @@ class SuiteWriter(object):
     self._stream = None
   
   def write(self):
-    with open('sample_suite{}.py'.format(self._num_suites), 'w') as stream:
+    SuiteWriter._file_num += 1
+    with open('{}suite{}.py'.format(self.file_prefix, self._file_num), 'w') as stream:
       self._stream = stream
       self._write_imports()
       self._write_suites()
