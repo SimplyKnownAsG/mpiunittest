@@ -52,7 +52,6 @@ class MpiUnitTestTests(unittest.TestCase):
     self._check_results_for_failures(result)
     self.assertEqual(result.testsRun, 15 if mut.RANK > 0 else 0)
 
-  @unittest.skip('i do whut i waunt')
   def test_unequalDistribution(self):
     if mut.RANK == 0:
       sw = SuiteWriter(mut.SIZE - 2, 20, 5.0)
@@ -66,10 +65,7 @@ class MpiUnitTestTests(unittest.TestCase):
     self.assertEqual(0, tests_run.pop(0))
     self.assertIn(1, tests_run)
     tests_run.remove(1)
-    self.assertIn(0, tests_run)
-    tests_run.remove(0)
     self.assertTrue(all(20 == count for count in tests_run))
-    self.assertEqual(result.testsRun, 10 if mut.RANK > 0 else 0)
 
 class SuiteWriter(object):
   
