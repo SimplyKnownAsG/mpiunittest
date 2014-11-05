@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 
 from __future__ import absolute_import
 
@@ -18,12 +17,18 @@ class SerialTestProgram(TestProgram):
 
 class MasterTestProgram(TestProgram):
 
-  def __init__(self):
+  def __init__(self, argv):
     loader.TestLoader.suiteClass = suites.MasterTestSuite
-    TestProgram.__init__(self, exit=False, testRunner=runners.MpiTestRunner)
+    TestProgram.__init__(self,
+                         exit=False,
+                         testRunner=runners.MpiTestRunner,
+                         argv=argv)
 
 class WorkerTestProgram(TestProgram):
 
-  def __init__(self):
+  def __init__(self, argv):
     loader.TestLoader.suiteClass = suites.WorkerTestSuite
-    TestProgram.__init__(self, exit=False, testRunner=runners.MpiTestRunner)
+    TestProgram.__init__(self,
+                         exit=False,
+                         testRunner=runners.MpiTestRunner,
+                         argv=argv)

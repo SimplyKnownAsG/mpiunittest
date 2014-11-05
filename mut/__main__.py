@@ -6,14 +6,14 @@ import traceback
 import mut
 from . import programs
 
-def get_test_program():
+def get_test_program(argv=None):
   if mut.SIZE <= 2 and mut.RANK == 0:
     print('Running in series, because there are not enough child-processes.')
-    return programs.SerialTestProgram()
+    return programs.SerialTestProgram(argv=argv)
   elif mut.SIZE > 2 and mut.RANK == 0:
     print('Running in parallel.')
-    return programs.MasterTestProgram()
-  return programs.WorkerTestProgram()
+    return programs.MasterTestProgram(argv)
+  return programs.WorkerTestProgram(argv)
 
 
 if __name__ == '__main__':
