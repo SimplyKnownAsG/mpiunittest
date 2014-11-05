@@ -36,12 +36,21 @@ class MpiUnitTestTests(unittest.TestCase):
   
   def test_equalDistribution(self):
     if mut.RANK == 0:
-      sw = SuiteWriter(mut.SIZE - 1, 10, 0.1)
+      sw = SuiteWriter(mut.SIZE - 1, 10, 1.0)
       sw.write()
     program = lion_mane.get_test_program(['mut', 'discover', '-bvp', 'sample_*.py'])
     result = program.result
     self._check_results_for_failures(result)
     self.assertEqual(result.testsRun, 10 if mut.RANK > 0 else 0)
+
+  def test_equalDistribution2(self):
+    if mut.RANK == 0:
+      sw = SuiteWriter((mut.SIZE - 1) * 3, 5, 1.0)
+      sw.write()
+    program = lion_mane.get_test_program(['mut', 'discover', '-bvp', 'sample_*.py'])
+    result = program.result
+    self._check_results_for_failures(result)
+    self.assertEqual(result.testsRun, 15 if mut.RANK > 0 else 0)
 
   @unittest.skip('i do whut i waunt')
   def test_unequalDistribution(self):
