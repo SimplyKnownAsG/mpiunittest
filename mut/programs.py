@@ -11,23 +11,10 @@ from . import suites
 from . import results
 from . import runners
 
-class SerialTestProgram(TestProgram):
-  pass
-
-
-class MasterTestProgram(TestProgram):
+class MpiTestProgram(TestProgram):
 
   def __init__(self, argv):
-    loader.TestLoader.suiteClass = suites.MasterTestSuite
-    TestProgram.__init__(self,
-                         exit=False,
-                         testRunner=runners.MpiTestRunner,
-                         argv=argv)
-
-class WorkerTestProgram(TestProgram):
-
-  def __init__(self, argv):
-    loader.TestLoader.suiteClass = suites.WorkerTestSuite
+    loader.TestLoader.suiteClass = suites.MpiTestSuite
     TestProgram.__init__(self,
                          exit=False,
                          testRunner=runners.MpiTestRunner,

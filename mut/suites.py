@@ -11,17 +11,84 @@ import mut
 from . import actions
 
 
-class SerialTestSuite(suite.TestSuite):
+class MpiTestSuite(suite.TestSuite):
   _instance = None
   
   def __init__(self, *args, **kwargs):
     suite.TestSuite.__init__(self, *args, **kwargs)
-    SerialTestSuite._instance = self
+    MpiTestSuite._instance = self
     self._result = None
+    self._flattened_suites = _SuiteCollection()
   
   @classmethod
   def get_instance(cls):
     return cls._instance
+
+  def run(self, result, debug=False):
+    self._result = result
+    suites = self._flatten()
+    if mut.RANK == 0:
+      self._run_as_master(debug)
+    else:
+      self._run_as_worker(debug)
+
+  def _flatten(self):
+    for ss in self:
+      if isinstance(ss, MpiTestSuite):
+        self._flattened_suites.update(ss._flatten())
+    if len(self._tests) > 0 and all(isinstance(ss, case.TestCase) for ss in self):
+      self._flattened_suites.add(self)
+    return self._flattened_suites
+
+  def _run_as_master(self, debug):
+    self._result.stream.writeln('Found {} suites, will distribute across {} processors.'
+                                .format(len(self._flattened_suites), mut.SIZE - 1))
+    for suite in self._flattened_suites.values():
+      actions.RequestWorkAction.add_work(RunSuiteAction(suite))
+    waiting = [True] + [False for _ in range(1, mut.SIZE)]
+    while actions.RequestWorkAction._backlog or not all(waiting):
+      for rank in range(1, mut.SIZE):
+        if not mut.COMM_WORLD.Iprobe(source=rank):
+          continue
+        mpi_action = mut.COMM_WORLD.recv(source=rank)
+        if not isinstance(mpi_action, actions.Action):
+          raise actions.MpiActionError(mpi_action)
+        mpi_action.invoke()
+        waiting[rank] = isinstance(mpi_action, actions.RequestWorkAction)
+    for _ in range(1, mut.SIZE):
+      mut.COMM_WORLD.send(actions.StopAction(), dest=_)
+    return self._result
+  
+  def _run_as_worker(self, debug):
+    not_done = True
+    while not_done:
+      mut.COMM_WORLD.send(actions.RequestWorkAction())
+      action = mut.COMM_WORLD.recv(None, source=0)
+      # result._original_stdout.write('[{:0>3}] received {}\n'.format(mut.RANK, action))
+      if not isinstance(action, actions.Action):
+        raise actions.MpiActionError(action)
+      not_done = action.invoke()
+
+
+class _SuiteCollection(dict):
+  
+  def __setitem__(self, key, value):
+    if key in self:
+      raise KeyError('Item with key {} already exists'.format(key))
+    dict.__setitem__(self, key, value)
+  
+  def add(self, suite):
+    tests = iter(suite)
+    first_test = tests.next()
+    fully_qualified_class = '{}.{}'.format(first_test.__module__, first_test.__class__.__name__)
+    for test in tests:
+      if test.__class__ != first_test.__class__:
+        raise Exception('A flattened suite should only contain instances of the same type, but '
+                        'found {} and {}'.format(first_test, test))
+    self[fully_qualified_class] = suite
+
+  def ordered(self):
+    pass
 
 
 class RunSuiteAction(actions.Action):
@@ -30,7 +97,7 @@ class RunSuiteAction(actions.Action):
     self._suite = suite
   
   def invoke(self):
-    result = SerialTestSuite.get_instance()._result
+    result = MpiTestSuite.get_instance()._result
     for test in self._suite:
       self.tryClassSetUpOrTearDown(test, result, 'setUpClass')
       if result.shouldStop:
@@ -59,50 +126,3 @@ class RunSuiteAction(actions.Action):
       finally:
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
-    
-
-class MasterTestSuite(SerialTestSuite):
-
-  def run(self, result, debug=False):
-    self._result = result
-    suites = self._flatten()
-    result.stream.writeln('Found {} suites, will distribute across {} processors.'
-                          .format(len(suites), mut.SIZE - 1))
-    for suite in suites:
-      actions.RequestWorkAction.add_work(RunSuiteAction(suite))
-    waiting = [True] + [False for _ in range(1, mut.SIZE)]
-    while actions.RequestWorkAction._backlog or not all(waiting):
-      for rank in range(1, mut.SIZE):
-        if not mut.COMM_WORLD.Iprobe(source=rank):
-          continue
-        mpi_action = mut.COMM_WORLD.recv(source=rank)
-        if not isinstance(mpi_action, actions.Action):
-          raise actions.MpiActionError(mpi_action)
-        mpi_action.invoke()
-        waiting[rank] = isinstance(mpi_action, actions.RequestWorkAction)
-    for _ in range(1, mut.SIZE):
-      mut.COMM_WORLD.send(actions.StopAction(), dest=_)
-    return result
-  
-  def _flatten(self):
-    suites = []
-    for ss in self:
-      if isinstance(ss, MasterTestSuite):
-        suites.extend(ss._flatten())
-    if len(self._tests) > 0 and all(isinstance(ss, case.TestCase) for ss in self):
-      suites.append(self)
-    return suites
-
-
-class WorkerTestSuite(SerialTestSuite):
-
-  def run(self, result, debug=False):
-    self._result = result
-    not_done = True
-    while not_done:
-      mut.COMM_WORLD.send(actions.RequestWorkAction())
-      action = mut.COMM_WORLD.recv(None, source=0)
-      # result._original_stdout.write('[{:0>3}] received {}\n'.format(mut.RANK, action))
-      if not isinstance(action, actions.Action):
-        raise actions.MpiActionError(action)
-      not_done = action.invoke()

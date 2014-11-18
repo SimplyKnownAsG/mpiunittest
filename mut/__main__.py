@@ -12,8 +12,7 @@ def get_test_program(argv=None):
     return programs.SerialTestProgram(argv=argv)
   elif mut.SIZE > 2 and mut.RANK == 0:
     print('Running in parallel.')
-    return programs.MasterTestProgram(argv)
-  return programs.WorkerTestProgram(argv)
+  return programs.MpiTestProgram(argv)
 
 
 if __name__ == '__main__':
