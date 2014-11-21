@@ -18,6 +18,8 @@ class MpiTestProgram(TestProgram):
   def __init__(self, argv):
     loader.TestLoader.suiteClass = suites.MpiTestSuite
     try:
+      if mut.COMM_WORLD.bcast('hi', root=0) != 'hi':
+        raise Exception('Could not sync up')
       TestProgram.__init__(self,
                            exit=False,
                            testRunner=runners.MpiTestRunner,
@@ -28,4 +30,4 @@ class MpiTestProgram(TestProgram):
       if mut.SIZE > 0:
         print('Killing the rest of MPI!')
         mut.COMM_WORLD.Abort(-1)
-    
+ 

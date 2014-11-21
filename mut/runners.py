@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 import sys
 from unittest import runner
-import cStringIO
+import six
 import timeit
 
 import mut
@@ -24,7 +24,7 @@ class MpiTestRunner(runner.TextTestRunner):
       stream = stream or sys.stderr
     else:
       resultclass = resultclass or results.WorkerTestResultHandler
-      stream = stream or cStringIO.StringIO()
+      stream = stream or six.StringIO()
     resultClass = results.MasterTestResultHandler if mut.RANK == 0 else results.WorkerTestResultHandler
     runner.TextTestRunner.__init__(self,
                                    stream=stream,
@@ -36,12 +36,12 @@ class MpiTestRunner(runner.TextTestRunner):
 
   def run(self, test):
     "Run the given test case or test suite."
-    result = self._setUpResultClass()
+    result = self._set_up_results_class()
     timeTaken = self._runTests(test, result)
     result.summarizeResults(timeTaken)
     return result
 
-  def _setUpResultClass(self):
+  def _set_up_results_class(self):
     result = self._makeResult()
     runner.registerResult(result)
     result.failfast = self.failfast

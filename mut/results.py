@@ -4,7 +4,7 @@ from __future__ import absolute_import
 import time
 from unittest import runner
 from unittest import result
-import cStringIO
+import six
 
 import mut
 from . import actions
@@ -97,7 +97,7 @@ class WorkerTestResultHandler(SerialTestResultHandler):
   
   def flush(self):
     del(self.stream)
-    self.stream = runner._WritelnDecorator(cStringIO.StringIO())
+    self.stream = runner._WritelnDecorator(six.StringIO())
   
   def addSuccess(self, test):
     SerialTestResultHandler.addSuccess(self, test)

@@ -11,6 +11,7 @@ class SuiteWriter(object):
     self._tests_per_suite = tests_per_suite
     self._seconds_per_suite = seconds_per_suite
     self._stream = None
+    self._decorators = []
   
   def write(self):
     if mut.RANK == 0:
@@ -19,16 +20,18 @@ class SuiteWriter(object):
         self._stream = stream
         self._write_imports()
         self._write_suites()
-    if mut.COMM_WORLD.bcast('hi', root=0) != 'hi':
-      raise Exception('Could not sync up')
 
   def _write_imports(self):
     self._stream.write('import unittest\n')
     self._stream.write('import time\n')
+    if any(self._decorators):
+      self._stream.write('import mut\n')
     self._stream.write('\n')
   
   def _write_suites(self):
     for nn in range(self._num_suites):
+      for decorator in self._decorators:
+        self._stream.write('{}\n'.format(decorator))
       self._stream.write('class Suite{0}_{0}Tests(unittest.TestCase):\n'.format(nn))
       self._stream.write('\n')
       self._write_tests()
@@ -40,6 +43,9 @@ class SuiteWriter(object):
       self._stream.write('    time.sleep({})\n'.format(time_per_test))
       self._stream.write('    self.assertEqual({0}, {0})\n'.format(ii))
       self._stream.write('\n')
+
+  def add_decorator(self, string):
+    self._decorators.append(string)
 
 def write_long_tests():
   with open('sample_long.py', 'w') as stream:

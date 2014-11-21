@@ -1,4 +1,8 @@
 
+from __future__ import absolute_import
+
+from .decorators import *
+
 COMM_WORLD = None
 RANK = 0
 SIZE = 1

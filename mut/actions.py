@@ -14,6 +14,22 @@ class StopAction(Action):
     return False
 
 
+# class MpiFailure(Exception):
+#   def __init__(self, rank):
+#     Exception.__init__(self,
+#                        'An error occurred in process {}.'.format(rank))
+
+
+class FailureAction(Action):
+  
+  def __init__(self):
+    self._original_rank = mut.RANK
+
+  def invoke(self):
+    RequestWorkAction.abort()
+    return True
+
+
 class WaitingAction(Action):
   def invoke(self):
     return True
@@ -50,6 +66,10 @@ class RequestWorkAction(Action):
       raise BacklogRegistrationError(action)
     cls._backlog.append(action)
   
+  @classmethod
+  def abort(cls):
+    del(cls._backlog[:])
+
   def __init__(self):
     self.worker_rank = mut.RANK
     if self.worker_rank == 0:

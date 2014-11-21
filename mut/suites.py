@@ -3,13 +3,25 @@ from __future__ import absolute_import
 
 import sys
 import traceback
-import cStringIO
+import six
 from unittest import suite
 from unittest import case
 from unittest import runner
 
 import mut
 from . import actions
+
+class _SuiteCollection(dict):
+  
+  def keys(self):
+    sort_func = lambda ss: -1 * getattr(ss, '__mut_slow_estimate__', float('inf'))
+    sorted_values = sorted(self.values(), key=sort_func)
+    return [str(vv) for vv in sorted_values]
+  
+  def add(self, suite):
+    with open('somefile{}.out'.format(mut.RANK), 'a') as ss:
+      ss.write('adding {}\n'.format(suite))
+    self[str(suite)] = suite
 
 
 class MpiTestSuite(suite.TestSuite):
@@ -135,17 +147,17 @@ class RunSuiteAction(actions.Action):
   def try_class_set_up_or_tear_down(self, test, result, methodName):
     method = getattr(test, methodName, None)
     if method is not None:
-      sys.stdout = cStringIO.StringIO()
-      sys.stderr = cStringIO.StringIO()
+      sys.stdout = six.StringIO()
+      sys.stderr = six.StringIO()
       try:
         method()
       except:
         if not hasattr(sys.stdout, 'getvalue'):
-          sys.stdout = cStringIO.StringIO()
+          sys.stdout = six.StringIO()
           sys.stdout.write('[mut.{:0>3}] sys.stdout has been modified'
                            .format(mut.RANK))
         if not hasattr(sys.stderr, 'getvalue'):
-          sys.stderr = cStringIO.StringIO()
+          sys.stderr = six.StringIO()
           sys.stderr.write('[mut.{:0>3}] sys.stderr has been modified'
                            .format(mut.RANK))
         result.addError(test, sys.exc_info())
