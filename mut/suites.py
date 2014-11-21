@@ -35,6 +35,7 @@ class MpiTestSuite(suite.TestSuite):
       self._run_as_master()
     else:
       self._run_as_worker()
+    return result
 
   def _flatten(self):
     for ss in self:
@@ -77,28 +78,21 @@ class MpiTestSuite(suite.TestSuite):
       mut.COMM_WORLD.send(actions.StopAction(), dest=rank)
       if self._debug:
         sys.__stderr__.write('[{:0<3}] telling {} to stop.\n'.format(mut.RANK, rank))
-    return self._result
   
   def _run_as_worker(self):
     not_done = True
-    try:
-      while not_done:
-        if self._debug:
-          sys.__stderr__.write('[{:0>3}] waiting...\n'.format(mut.RANK))
-        mut.COMM_WORLD.send(actions.RequestWorkAction())
-        action = mut.COMM_WORLD.recv(None, source=0)
-        if self._debug:
-          sys.__stderr__.write('[{:0>3}] sent {}\n'.format(mut.RANK, action))
-        if not isinstance(action, actions.Action):
-          raise actions.MpiActionError(action)
-        if self._debug:
-          sys.__stderr__.write('[{:0>3}] {}.\n'.format(mut.RANK, action))
-        not_done = action.invoke()
-    except:
-      traceback.print_exc(file=sys.__stderr__)
+    while not_done:
       if self._debug:
-        sys.__stderr__.write('[{:0>3}] worker node failed, quitting.\n'.format(mut.RANK))
-      mut.COMM_WORLD.Abort(-1)
+        sys.__stderr__.write('[{:0>3}] waiting...\n'.format(mut.RANK))
+      mut.COMM_WORLD.send(actions.RequestWorkAction())
+      action = mut.COMM_WORLD.recv(None, source=0)
+      if self._debug:
+        sys.__stderr__.write('[{:0>3}] received {}\n'.format(mut.RANK, action))
+      if not isinstance(action, actions.Action):
+        raise actions.MpiActionError(action)
+      if self._debug:
+        sys.__stderr__.write('[{:0>3}] {}.\n'.format(mut.RANK, action))
+      not_done = action.invoke()
 
 
 class _SuiteCollection(dict):
@@ -131,14 +125,14 @@ class RunSuiteAction(actions.Action):
     local_suite = MpiTestSuite.get_instance()
     result = local_suite._result
     for test in local_suite._flattened_suites[self._suite_name]:
-      self.tryClassSetUpOrTearDown(test, result, 'setUpClass')
+      self.try_class_set_up_or_tear_down(test, result, 'setUpClass')
       if result.shouldStop:
         break
       test(result)
-      self.tryClassSetUpOrTearDown(test, result, 'tearDownClass')
+      self.try_class_set_up_or_tear_down(test, result, 'tearDownClass')
     return not result.shouldStop
 
-  def tryClassSetUpOrTearDown(self, test, result, methodName):
+  def try_class_set_up_or_tear_down(self, test, result, methodName):
     method = getattr(test, methodName, None)
     if method is not None:
       sys.stdout = cStringIO.StringIO()
