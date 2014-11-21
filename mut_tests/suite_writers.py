@@ -1,5 +1,5 @@
 
-
+import mut
 
 class SuiteWriter(object):
   
@@ -13,11 +13,14 @@ class SuiteWriter(object):
     self._stream = None
   
   def write(self):
-    SuiteWriter._file_num += 1
-    with open('{}suite{}.py'.format(self.file_prefix, self._file_num), 'w') as stream:
-      self._stream = stream
-      self._write_imports()
-      self._write_suites()
+    if mut.RANK == 0:
+      SuiteWriter._file_num += 1
+      with open('{}suite{}.py'.format(self.file_prefix, self._file_num), 'w') as stream:
+        self._stream = stream
+        self._write_imports()
+        self._write_suites()
+    if mut.COMM_WORLD.bcast('hi', root=0) != 'hi':
+      raise Exception('Could not sync up')
 
   def _write_imports(self):
     self._stream.write('import unittest\n')

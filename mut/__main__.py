@@ -16,13 +16,4 @@ def get_test_program(argv=None):
 
 
 if __name__ == '__main__':
-  try:
-    test_program = get_test_program()
-  except Exception as ee:
-    print('Something bad happened on {}!'.format(mut.RANK))
-    print(ee)
-    traceback.print_exc()
-    if mut.SIZE > 0:
-      print('Killing the rest of MPI!')
-      mut.COMM_WORLD.Abort(-1)
-    
+  test_program = get_test_program()

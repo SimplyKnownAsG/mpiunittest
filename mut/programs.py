@@ -5,7 +5,9 @@ import sys
 from unittest import main as TestProgram
 from unittest import loader
 from unittest import runner
+import traceback
 
+import mut
 from . import actions
 from . import suites
 from . import results
@@ -15,7 +17,15 @@ class MpiTestProgram(TestProgram):
 
   def __init__(self, argv):
     loader.TestLoader.suiteClass = suites.MpiTestSuite
-    TestProgram.__init__(self,
-                         exit=False,
-                         testRunner=runners.MpiTestRunner,
-                         argv=argv)
+    try:
+      TestProgram.__init__(self,
+                           exit=False,
+                           testRunner=runners.MpiTestRunner,
+                           argv=argv)
+    except Exception as ee:
+      print('Something bad happened on {}!'.format(mut.RANK))
+      traceback.print_exc()
+      if mut.SIZE > 0:
+        print('Killing the rest of MPI!')
+        mut.COMM_WORLD.Abort(-1)
+    

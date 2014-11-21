@@ -24,6 +24,9 @@ class MpiUnitTestTests(unittest.TestCase):
       for test_file in glob.glob(suite_writers.SuiteWriter.file_prefix + '*'):
         os.remove(test_file)
 
+  def setUp(self):
+    self.tearDownClass()
+
   def tearDown(self):
     self.tearDownClass()
     
@@ -36,29 +39,26 @@ class MpiUnitTestTests(unittest.TestCase):
     self.assertEqual(result.wasSuccessful(), True)
   
   def test_equalDistribution(self):
-    if mut.RANK == 0:
-      sw = suite_writers.SuiteWriter(mut.SIZE - 1, 10, 1.0)
-      sw.write()
+    sw = suite_writers.SuiteWriter(mut.SIZE - 1, 10, 1.0)
+    sw.write()
     program = lion_mane.get_test_program(['mut', 'discover', '-p', 'sample_*.py'])
     result = program.result
     self._check_results_for_failures(result)
     self.assertEqual(result.testsRun, 10 if mut.RANK > 0 else 0)
 
   def test_equalDistribution2(self):
-    if mut.RANK == 0:
-      sw = suite_writers.SuiteWriter((mut.SIZE - 1) * 3, 5, 1.0)
-      sw.write()
+    sw = suite_writers.SuiteWriter((mut.SIZE - 1) * 3, 5, 1.0)
+    sw.write()
     program = lion_mane.get_test_program(['mut', 'discover', '-p', 'sample_*.py'])
     result = program.result
     self._check_results_for_failures(result)
     self.assertEqual(result.testsRun, 15 if mut.RANK > 0 else 0)
 
   def test_unequalDistribution(self):
-    if mut.RANK == 0:
-      sw = suite_writers.SuiteWriter(mut.SIZE - 2, 20, 5.0)
-      sw.write()
-      sw = suite_writers.SuiteWriter(1, 1, 5.0)
-      sw.write()
+    sw = suite_writers.SuiteWriter(mut.SIZE - 2, 20, 5.0)
+    sw.write()
+    sw = suite_writers.SuiteWriter(1, 1, 5.0)
+    sw.write()
     program = lion_mane.get_test_program(['mut', 'discover', '-p', 'sample_*.py'])
     result = program.result
     self._check_results_for_failures(result)
