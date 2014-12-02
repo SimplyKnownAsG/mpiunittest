@@ -48,7 +48,7 @@ class SerialTestResultHandler(runner.TextTestResult):
         if mut.RANK != 0:
             runner.TextTestResult.printErrors(self)
             message = self.stream.getvalue()
-            mut.mpi_log(self.stream, message)
+        mut.mpi_log(self.stream, message)
       
     def _printTestsPerSecond(self, timeTaken):
         if hasattr(self, 'separator2'):
