@@ -8,17 +8,7 @@ import six
 
 import mut
 from . import actions
-
-
-class SimpleResultAction(actions.Action):
-  
-    def __init__(self, message):
-        self._message = message
-    
-    def invoke(self):
-        handler = SerialTestResultHandler.get_instance()
-        handler.printResult(self._message)
-        return True
+from . import logger
 
 
 class SerialTestResultHandler(runner.TextTestResult):
@@ -48,7 +38,7 @@ class SerialTestResultHandler(runner.TextTestResult):
         if mut.RANK != 0:
             runner.TextTestResult.printErrors(self)
             message = self.stream.getvalue()
-        mut.mpi_log(self.stream, message)
+        logger.all_log(message)
       
     def _printTestsPerSecond(self, timeTaken):
         if hasattr(self, 'separator2'):
@@ -60,7 +50,7 @@ class SerialTestResultHandler(runner.TextTestResult):
             ran = sum(total_tests)
             msg_prefix = 'Dispatched a total of '
         msg = '{} test{} in {:.4f}s'.format(ran, (ran != 1) * 's', timeTaken)
-        mut.mpi_log(self.stream, msg_prefix + msg)
+        logger.all_log(msg_prefix + msg)
     
     def _printInfos_HASHTAG_BadName(self):
         details = [('failures', mut.mpi_length(self.failures)),
@@ -75,7 +65,7 @@ class SerialTestResultHandler(runner.TextTestResult):
                        ', '.join('{}={}'.format(nn, cc) for nn, cc in details)))
         if mut.RANK == 0:
             msg = 'summary: ' + msg
-        mut.mpi_log(self.stream, msg)
+        logger.all_log(msg)
 
 
 class MasterTestResultHandler(SerialTestResultHandler):
@@ -91,8 +81,7 @@ class WorkerTestResultHandler(SerialTestResultHandler):
 
     def _flushStream(self):
         message = self.stream.getvalue()
-        action = SimpleResultAction(message)
-        mut.COMM_WORLD.send(action, dest=0)
+        logger.log(message)
         self.flush()
   
     def flush(self):

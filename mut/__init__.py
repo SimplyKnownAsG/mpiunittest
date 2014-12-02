@@ -38,15 +38,3 @@ def mpi_length(iterable):
         return sum(lengths)
     else:
         return length
-
-def mpi_log(stream, content):
-    prefix = '[mut.{:0>3}] '.format(RANK)
-    lines = content.splitlines()
-    if any(len(ll) > 0 for ll in lines):
-        msg = '{}{}\n'.format(prefix, ('\n' + prefix).join(lines))
-    else:
-        msg = ''
-    messages = COMM_WORLD.gather(msg, root=0)
-    if RANK == 0:
-        for msg in [mm for mm in messages if mm != '']:
-            stream.write(msg)

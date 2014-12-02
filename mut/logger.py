@@ -25,9 +25,27 @@ def stop_log_thread():
         mut.COMM_WORLD.isend(actions.StopAction(), dest=MUT_LOG_PROCESSOR, tag=_MUT_LOG_TAG)
 
 
-def log(msg):
-    message = '[mut.{:0>3}] {}\n'.format(mut.RANK, msg)
-    mut.COMM_WORLD.isend(LogMessageAction(message), dest=MUT_LOG_PROCESSOR, tag=_MUT_LOG_TAG)
+def _format_message(message):
+    if '\n' not in message and len(message) > 0:
+        return message
+    lines = message.splitlines()
+    prefix = '[mut.{:0>3}] '.format(mut.RANK)
+    if any(len(ll) > 0 for ll in lines):
+        return '{}{}\n'.format(prefix, ('\n' + prefix).join(lines))
+    return ''
+
+
+def log(message):
+    msg = _format_message(message)
+    if msg is not None:
+        mut.COMM_WORLD.isend(LogMessageAction(msg), dest=MUT_LOG_PROCESSOR, tag=_MUT_LOG_TAG)
+
+
+def all_log(message):
+    messages = mut.COMM_WORLD.gather(_format_message(message + '\n'), root=MUT_LOG_PROCESSOR)
+    if mut.RANK == MUT_LOG_PROCESSOR:
+        msg = ''.join(messages)
+        mut.COMM_WORLD.isend(LogMessageAction(msg), dest=MUT_LOG_PROCESSOR, tag=_MUT_LOG_TAG)
 
 
 class LogThread(threading.Thread):
