@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import functools
 import types
 import sys
+import unittest
 
 
 class DecoratorError(Exception):
@@ -24,15 +25,38 @@ def slow_test(time_estimate=sys.maxint):
     time_estimate : numerical
       relative estimate on how long the test will take.
     
-    Notes
-    -----
+    Warning
+    -------
     This is only applicable to classes, i.e. cannot be applied to methods.
     '''
     def decorator(test_class):
         if not isinstance(test_class, (type, types.ClassType)):
-            raise DecoratorError('slow_test only applies to classes')
+            raise DecoratorError('@slow_test only applies to classes')
         class DecoratedClass(test_class):
             __mut_slow_estimate__ = time_estimate
         return DecoratedClass
     return decorator
 
+def parallel(min_mpi_size=2):
+    '''Indicates a test needs to be run by all processors in parallel.
+    
+    :py:code:`min_mpi_size` is used to determine if the test should run given the actual MPI size;
+    if :py:code:`min_mpi_size < mpi4py.MPI.COMM_WORLD.Get_size()`, then the test will be skipped.
+    
+    Parameters
+    ----------
+    min_mpi_size : int
+      Indicates the minimum MPI size needed to run this test. If MPI size is less than min_mpi_size,
+      the test will be skipped.
+    
+    Warning
+    -------
+    This is only applicable to classes, i.e. cannot be applied to methods.
+    '''
+    def decorator(test_class):
+        if not isinstance(test_class, (type, types.ClassType)):
+            raise DecoratorError('@parallel_test only applies to classes')
+        class DecoratedClass(test_class):
+            __mut_parallel__ = min_mpi_size
+        return DecoratedClass
+    return decorator
