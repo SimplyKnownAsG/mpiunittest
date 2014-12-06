@@ -8,6 +8,7 @@ from unittest import case
 
 import mut
 from . import actions
+from . import logger
 
 class _SuiteCollection(dict):
   
@@ -66,17 +67,17 @@ class MpiTestSuite(suite.TestSuite):
         if mut.RANK == 0:
             master_suite_names = loaded_suite_names[0]
             if self._debug:
-                sys.__stderr__.write('[{:0>3}] Checking that all processors loaded same tests.\n'.format(mut.RANK))
+                logger.log('Checking that all processors loaded same tests.\n')
             for worker_suite_names in loaded_suite_names[1:]:
                 if master_suite_names != worker_suite_names:
                     if self._debug:
-                        sys.__stderr__.write('[{:0>3}] shit failed, \n{} vs.\n{}.\n'
-                                             .format(mut.RANK, master_suite_names, worker_suite_names))
+                        logger.log('something failed, \n{} vs.\n{}.\n'
+                                   .format(master_suite_names, worker_suite_names))
                     raise Exception('Worker and master did not load the same tests... this is an issue.')
 
     def _run_as_master(self):
-        self._result.stream.writeln('Found {} suites, will distribute across {} processors.'
-                                    .format(len(self._flattened_suites), mut.SIZE - 1))
+        logger.log('Found {} suites, will distribute across {} processors.'
+                   .format(len(self._flattened_suites), mut.SIZE - 1))
         for suite_name in self._flattened_suites.keys():
             actions.RequestWorkAction.add_work(RunSuiteAction(suite_name))
         waiting = [True] + [False for _ in range(1, mut.SIZE)]
@@ -89,26 +90,27 @@ class MpiTestSuite(suite.TestSuite):
                     raise actions.MpiActionError(mpi_action)
                 mpi_action.invoke()
                 if self._debug:
-                    sys.__stderr__.write('[{:0<3}] backlog: {}, waiting: {}\n'.format(mut.RANK, len(actions.RequestWorkAction._backlog), all(waiting)))
+                    logger.log('backlog: {}, waiting: {}\n'
+                               .format(len(actions.RequestWorkAction._backlog), all(waiting)))
                 waiting[rank] = isinstance(mpi_action, actions.RequestWorkAction)
         for rank in range(1, mut.SIZE):
             mut.COMM_WORLD.send(actions.StopAction(), dest=rank)
             if self._debug:
-                sys.__stderr__.write('[{:0<3}] telling {} to stop.\n'.format(mut.RANK, rank))
+                logger.log('telling {} to stop.\n'.format(rank))
 
     def _run_as_worker(self):
         not_done = True
         while not_done:
             if self._debug:
-                sys.__stderr__.write('[{:0>3}] waiting...\n'.format(mut.RANK))
+                sys.__stderr__.write('waiting...\n')
             mut.COMM_WORLD.send(actions.RequestWorkAction())
             action = mut.COMM_WORLD.recv(None, source=0)
             if self._debug:
-                sys.__stderr__.write('[{:0>3}] received {}\n'.format(mut.RANK, action))
+                logger.log('received {}\n'.format(action))
             if not isinstance(action, actions.Action):
                 raise actions.MpiActionError(action)
             if self._debug:
-                sys.__stderr__.write('[{:0>3}] {}.\n'.format(mut.RANK, action))
+                logger.log('{}.\n'.format(action))
             not_done = action.invoke()
 
 

@@ -49,6 +49,7 @@ class SlowDecoratorTests(base_test.BaseTest):
         a = A()
         self.assertEqual(sys.maxint, a.__mut_slow_estimate__)
 
+@unittest.skip('in development')
 class ParallelDecoratorTests(base_test.BaseTest):
 
     def test_slowDecorator(self):

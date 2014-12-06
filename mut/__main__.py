@@ -15,6 +15,7 @@ def get_test_program(argv=None):
             return programs.SerialTestProgram(argv=argv)
         elif mut.SIZE > 2 and mut.RANK == 0:
             print('Running in parallel.')
+        #logger.log('I guess this is working')
         return programs.MpiTestProgram(argv)
     finally:
         logger.stop_log_thread()

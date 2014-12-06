@@ -81,7 +81,7 @@ class WorkerTestResultHandler(SerialTestResultHandler):
 
     def _flushStream(self):
         message = self.stream.getvalue()
-        logger.log(message)
+        logger.write(message)
         self.flush()
   
     def flush(self):
