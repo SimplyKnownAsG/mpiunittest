@@ -50,7 +50,7 @@ def write(message):
 def all_log(message):
     messages = mut.COMM_WORLD.gather(_format_message(message), root=MUT_LOG_PROCESSOR)
     if mut.RANK == MUT_LOG_PROCESSOR:
-        msg = ''.join(messages)
+        msg = ''.join(mm for mm in messages if mm is not None)
         mut.COMM_WORLD.send(LogMessageAction(msg), dest=MUT_LOG_PROCESSOR, tag=_MUT_LOG_TAG)
 
 
