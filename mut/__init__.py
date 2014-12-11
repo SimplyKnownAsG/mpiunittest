@@ -16,6 +16,10 @@ try:
 except ImportError as ie:
     pass
 
+def main():
+    from .__main__ import get_test_program
+    get_test_program()
+
 def mpi_flatten_gather(iterable):
     '''Performs an MPI gather operation for a series of iterables. A flattened
     list is returned for the master node, worker nodes are returned the original

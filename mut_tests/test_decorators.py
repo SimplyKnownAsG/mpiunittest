@@ -49,24 +49,19 @@ class SlowDecoratorTests(base_test.BaseTest):
         a = A()
         self.assertEqual(sys.maxint, a.__mut_slow_estimate__)
 
-@unittest.skip('in development')
+
 class ParallelDecoratorTests(base_test.BaseTest):
 
-    def test_slowDecorator(self):
-        raise NotImplementedError()
-        sw = suite_writers.SuiteWriter((mut.SIZE - 2) * 2, 20, 3.0)
-        sw.write()
-        sw = suite_writers.SuiteWriter(1, 1, 5.0)
-        sw.add_decorator('@mut.slow_test(100)')
+    def test_parallelDecorator(self):
+        sw = suite_writers.SuiteWriter(3, 7, 3.0)
+        sw.add_decorator('@mut.parallel()')
         sw.write()
         program = lion_mane.get_test_program(['mut', 'discover', '-p', 'sample_*.py'])
         result = program.result
         self.check_results_for_failures(result)
         tests_run = mut.COMM_WORLD.allgather(result.testsRun)
-        self.assertEqual(0, tests_run.pop(0))
-        self.assertIn(1, tests_run)
-        tests_run.remove(1)
-        self.assertTrue(all(40 == count for count in tests_run))
+        self.assertEqual(21, tests_run.pop(0))
+        self.assertTrue(all(21 == count for count in tests_run))
 
     def test_parallelDecoratorCanBeAppliedToAClass(self):
         @decorators.parallel(4)

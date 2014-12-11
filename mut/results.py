@@ -11,13 +11,13 @@ from . import actions
 from . import logger
 
 
-class SerialTestResultHandler(runner.TextTestResult):
+class MpiTestResultHandler(runner.TextTestResult):
   
     _instance = None
   
     def __init__(self, *args, **kwargs):
         runner.TextTestResult.__init__(self, *args, **kwargs)
-        SerialTestResultHandler._instance = self
+        MpiTestResultHandler._instance = self
     
     @classmethod
     def get_instance(cls):
@@ -27,14 +27,9 @@ class SerialTestResultHandler(runner.TextTestResult):
         self.printErrors()
         self._printTestsPerSecond(timeTaken)
         self._printInfos_HASHTAG_BadName()
-    
-    def flush(self):
-        self.stream.write('\n')
-        self.stream.flush()
-      
+     
     def printErrors(self):
         message = ''
-        self.flush()
         if mut.RANK != 0:
             runner.TextTestResult.printErrors(self)
             message = self.stream.getvalue()
@@ -44,12 +39,19 @@ class SerialTestResultHandler(runner.TextTestResult):
         if hasattr(self, 'separator2'):
             self.stream.writeln(self.separator2)
         ran = self.testsRun
-        total_tests = mut.COMM_WORLD.gather(self.testsRun, root=0)
+        total_tests = mut.COMM_WORLD.allgather(self.testsRun)
         msg_prefix = 'Ran '
         if mut.RANK == 0:
-            ran = sum(total_tests)
+            logger.write('\n')
+            ran = sum(total_tests) - total_tests[0] * (mut.SIZE - 1)
             msg_prefix = 'Dispatched a total of '
         msg = '{} test{} in {:.4f}s'.format(ran, (ran != 1) * 's', timeTaken)
+        if total_tests[0] > 1:
+            msg += ', {} tests were parallel.'.format(total_tests[0])
+        elif total_tests[0] > 0:
+            msg += ', 1 test was parallel.'
+        else:
+            msg += '.'
         logger.all_log(msg_prefix + msg)
     
     def _printInfos_HASHTAG_BadName(self):
@@ -67,47 +69,32 @@ class SerialTestResultHandler(runner.TextTestResult):
             msg = 'summary: ' + msg
         logger.all_log(msg)
 
-
-class MasterTestResultHandler(SerialTestResultHandler):
-
-    def printResult(self, message):
-        self.stream.write(message)
-
-
-class WorkerTestResultHandler(SerialTestResultHandler):
-
-    def __init__(self, stream, descriptions, verbosity):
-        SerialTestResultHandler.__init__(self, stream, descriptions, verbosity)
-
-    def _flushStream(self):
+    def _flush_stream(self):
         message = self.stream.getvalue()
         logger.write(message)
-        self.flush()
-  
-    def flush(self):
         del(self.stream)
         self.stream = runner._WritelnDecorator(six.StringIO())
   
     def addSuccess(self, test):
-        SerialTestResultHandler.addSuccess(self, test)
-        self._flushStream()
+        runner.TextTestResult.addSuccess(self, test)
+        self._flush_stream()
 
     def addError(self, test, err):
-        SerialTestResultHandler.addError(self, test, err)
-        self._flushStream()
+        runner.TextTestResult.addError(self, test, err)
+        self._flush_stream()
 
     def addFailure(self, test, err):
-        SerialTestResultHandler.addFailure(self, test, err)
-        self._flushStream()
+        runner.TextTestResult.addFailure(self, test, err)
+        self._flush_stream()
 
     def addSkip(self, test, reason):
-        SerialTestResultHandler.addSkip(self, test, reason)
-        self._flushStream()
+        runner.TextTestResult.addSkip(self, test, reason)
+        self._flush_stream()
 
     def addExpectedFailure(self, test, err):
-        SerialTestResultHandler.addSkip(self, test, reason)
-        self._flushStream()
+        runner.TextTestResult.addSkip(self, test, err)
+        self._flush_stream()
 
     def addUnexpectedSuccess(self, test):
-        SerialTestResultHandler.addUnexpectedSuccess(self, test)
-        self._flushStream()
+        runner.TextTestResult.addUnexpectedSuccess(self, test)
+        self._flush_stream()

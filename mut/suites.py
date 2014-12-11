@@ -11,12 +11,16 @@ from . import actions
 from . import logger
 
 class _SuiteCollection(dict):
-  
-    def keys(self):
-        sort_func = lambda (_, suite): -1 * getattr(suite, '__mut_slow_estimate__', float('inf'))
-        sorted_values = sorted(self.items(), key=sort_func)
+    
+    def parallel_suites(self):
+        return [full_name for full_name, ss in self.items() if ss.run_in_parallel()]
+
+    def sorted_suites(self):
+        candidates = { name: ss for name, ss in self.items() if not ss.run_in_parallel() }
+        sort_func = lambda (_, ss): -1 * getattr(ss, '__mut_slow_estimate__', float('inf'))
+        sorted_values = sorted(candidates.items(), key=sort_func)
         return [full_name for full_name, _ in sorted_values]
-  
+
     def add(self, suite):
         tests = iter(suite)
         first_test = tests.next()
@@ -26,7 +30,7 @@ class _SuiteCollection(dict):
                 raise Exception('A flattened suite should only contain instances of the same type, '
                                 'but found {} and {}'.format(first_test, test))
         self[fully_qualified_class] = suite
-    
+
 
 
 class MpiTestSuite(suite.TestSuite):
@@ -43,11 +47,25 @@ class MpiTestSuite(suite.TestSuite):
     def get_instance(cls):
         return cls._instance
 
+    def run_in_parallel(self):
+        tests = list(iter(self))
+        return getattr(tests[0], '__mut_parallel__', -1) > 0
+
     def run(self, result, debug=False):
         self._debug = debug
         self._result = result
         self._flatten()
         self._confirm_process_loaded_same_tests()
+        psuites = self._flattened_suites.parallel_suites()
+        if mut.RANK == 0:
+            logger.log('Found {} suites, will distribute across {} processors.'
+                       .format(len(self._flattened_suites), mut.SIZE - 1))
+            if any(psuites):
+                logger.log('Running {} suites in parallel'.format(len(psuites)))
+        for suite_name in psuites:
+            sa = RunSuiteAction(suite_name)
+            sa = mut.COMM_WORLD.bcast(sa, root=0)
+            sa.invoke()
         if mut.RANK == 0:
             self._run_as_master()
         else:
@@ -76,9 +94,7 @@ class MpiTestSuite(suite.TestSuite):
                     raise Exception('Worker and master did not load the same tests... this is an issue.')
 
     def _run_as_master(self):
-        logger.log('Found {} suites, will distribute across {} processors.'
-                   .format(len(self._flattened_suites), mut.SIZE - 1))
-        for suite_name in self._flattened_suites.keys():
+        for suite_name in self._flattened_suites.sorted_suites():
             actions.RequestWorkAction.add_work(RunSuiteAction(suite_name))
         waiting = [True] + [False for _ in range(1, mut.SIZE)]
         while actions.RequestWorkAction._backlog or not all(waiting):

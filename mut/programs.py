@@ -23,6 +23,6 @@ class MpiTestProgram(TestProgram):
         except Exception as ee:
             print('Something bad happened on {}!'.format(mut.RANK))
             traceback.print_exc()
-            if mut.SIZE > 0:
+            if mut.SIZE > 1:
                 print('Killing the rest of MPI!')
                 mut.COMM_WORLD.Abort(-1)

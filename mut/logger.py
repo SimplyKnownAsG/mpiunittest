@@ -15,7 +15,7 @@ _stderr = sys.stderr
 _stdout = sys.stdout
 
 def start_log_thread():
-    if mut.RANK == MUT_LOG_PROCESSOR:
+    if _log_thread is None and mut.RANK == MUT_LOG_PROCESSOR:
         global _log_thread
         _log_thread = LogThread()
         _log_thread.start()
@@ -23,6 +23,9 @@ def start_log_thread():
 
 def stop_log_thread():
     mut.COMM_WORLD.isend(actions.StopAction(), dest=MUT_LOG_PROCESSOR, tag=_MUT_LOG_TAG)
+    if mut.RANK == MUT_LOG_PROCESSOR:
+        global _log_thread
+        _log_thread = None
 
 
 def _format_message(message):
@@ -34,6 +37,7 @@ def _format_message(message):
 
 
 def log(message):
+    start_log_thread()
     msg = _format_message(message)
     if msg is not None:
         msg_action = LogMessageAction(msg)

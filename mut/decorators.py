@@ -34,6 +34,8 @@ def slow_test(time_estimate=sys.maxint):
             raise DecoratorError('@slow_test only applies to classes')
         class DecoratedClass(test_class):
             __mut_slow_estimate__ = time_estimate
+        DecoratedClass.__name__ = test_class.__name__
+        DecoratedClass.__module__ = test_class.__module__
         return DecoratedClass
     return decorator
 
@@ -58,5 +60,7 @@ def parallel(min_mpi_size=2):
             raise DecoratorError('@parallel_test only applies to classes')
         class DecoratedClass(test_class):
             __mut_parallel__ = min_mpi_size
+        DecoratedClass.__name__ = test_class.__name__
+        DecoratedClass.__module__ = test_class.__module__
         return DecoratedClass
     return decorator

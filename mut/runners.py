@@ -19,13 +19,8 @@ class MpiTestRunner(runner.TextTestRunner):
                  failfast=False,
                  buffer=False,
                  resultclass=None):
-        if mut.RANK == 0:
-            resultclass = resultclass or results.MasterTestResultHandler
-            stream = stream or sys.stderr
-        else:
-            resultclass = resultclass or results.WorkerTestResultHandler
-            stream = stream or six.StringIO()
-        resultClass = results.MasterTestResultHandler if mut.RANK == 0 else results.WorkerTestResultHandler
+        resultclass = resultclass or results.MpiTestResultHandler
+        stream = stream or six.StringIO()
         runner.TextTestRunner.__init__(self,
                                        stream=stream,
                                        descriptions=descriptions,
