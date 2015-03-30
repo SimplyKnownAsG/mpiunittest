@@ -36,5 +36,5 @@ class BaseTest(unittest.TestCase):
     
     def setUp(self):
         self.tearDownClass()
-        if mut.COMM_WORLD.bcast('hi', root=0) != 'hi':
+        if mut.MPI_WORLD.bcast('hi', root=0) != 'hi':
             raise Exception('Could not sync up')

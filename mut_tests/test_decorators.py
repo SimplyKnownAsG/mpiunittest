@@ -7,8 +7,8 @@ import unittest
 import mut
 from mut import __main__ as lion_mane
 from mut import decorators
-from . import suite_writers
-from . import base_test
+from mut_tests import suite_writers
+from mut_tests import base_test
 
 class SlowDecoratorTests(base_test.BaseTest):
 
@@ -21,8 +21,8 @@ class SlowDecoratorTests(base_test.BaseTest):
         program = lion_mane.get_test_program(['mut', 'discover', '-p', 'sample_*.py'])
         result = program.result
         self.check_results_for_failures(result)
-        tests_run = mut.COMM_WORLD.allgather(result.testsRun)
-        self.assertEqual(0, tests_run.pop(0))
+        tests_run = mut.MPI_WORLD.allgather(result.testsRun)
+        self.assertEqual(0, tests_run.pop(mut.DISPATCHER_RANK))
         self.assertIn(1, tests_run)
         tests_run.remove(1)
         self.assertTrue(all(40 == count for count in tests_run))
@@ -59,8 +59,8 @@ class ParallelDecoratorTests(base_test.BaseTest):
         program = lion_mane.get_test_program(['mut', 'discover', '-p', 'sample_*.py'])
         result = program.result
         self.check_results_for_failures(result)
-        tests_run = mut.COMM_WORLD.allgather(result.testsRun)
-        self.assertEqual(21, tests_run.pop(0))
+        tests_run = mut.MPI_WORLD.allgather(result.testsRun)
+        self.assertEqual(21, tests_run.pop(mut.DISPATCHER_RANK))
         self.assertTrue(all(21 == count for count in tests_run))
 
     def test_parallelDecoratorCanBeAppliedToAClass(self):

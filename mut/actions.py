@@ -72,7 +72,7 @@ class RequestWorkAction(Action):
     
     def __init__(self):
         self.worker_rank = mut.RANK
-        if self.worker_rank == 0:
+        if self.worker_rank == mut.DISPATCHER_RANK:
             raise WorkRequestError(self.worker_rank)
     
     def invoke(self):
@@ -83,5 +83,6 @@ class RequestWorkAction(Action):
             workAction = WaitingAction()
         # print('[{}] id:{} len:{} worker_rank:{}, action:{}'
         #       .format(mut.RANK, id(self._backlog), len(self._backlog), self.worker_rank, workAction))
-        mut.COMM_WORLD.send(workAction, dest=self.worker_rank)
+        mut.DISPATCHER_COMM.send(workAction, dest=self.worker_rank)
         return True
+

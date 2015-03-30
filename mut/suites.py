@@ -11,12 +11,14 @@ from . import actions
 from . import logger
 
 class _SuiteCollection(dict):
-    
-    def parallel_suites(self):
-        return [full_name for full_name, ss in self.items() if ss.run_in_parallel()]
 
+    @property
+    def parallel_suites(self):
+        return [full_name for full_name, ss in self.items() if ss.is_parallel]
+
+    @property
     def sorted_suites(self):
-        candidates = { name: ss for name, ss in self.items() if not ss.run_in_parallel() }
+        candidates = {name: ss for name, ss in self.items() if not ss.is_parallel}
         sort_func = lambda (_, ss): -1 * getattr(ss, '__mut_slow_estimate__', float('inf'))
         sorted_values = sorted(candidates.items(), key=sort_func)
         return [full_name for full_name, _ in sorted_values]
@@ -47,7 +49,8 @@ class MpiTestSuite(suite.TestSuite):
     def get_instance(cls):
         return cls._instance
 
-    def run_in_parallel(self):
+    @property
+    def is_parallel(self):
         tests = list(iter(self))
         return getattr(tests[0], '__mut_parallel__', -1) > 0
 
@@ -56,18 +59,14 @@ class MpiTestSuite(suite.TestSuite):
         self._result = result
         self._flatten()
         self._confirm_process_loaded_same_tests()
-        psuites = self._flattened_suites.parallel_suites()
-        if mut.RANK == 0:
+        psuites = self._flattened_suites.parallel_suites
+        if mut.RANK == mut.DISPATCHER_RANK:
             logger.log('Found {} suites, will distribute across {} processors.'
                        .format(len(self._flattened_suites), mut.SIZE - 1))
             if any(psuites):
                 logger.log('Running {} suites in parallel'.format(len(psuites)))
-        for suite_name in psuites:
-            sa = RunSuiteAction(suite_name)
-            sa = mut.COMM_WORLD.bcast(sa, root=0)
-            sa.invoke()
-        if mut.RANK == 0:
-            self._run_as_master()
+        if mut.RANK == mut.DISPATCHER_RANK:
+            self._run_as_dispatcher()
         else:
             self._run_as_worker()
         return result
@@ -81,7 +80,7 @@ class MpiTestSuite(suite.TestSuite):
         return self._flattened_suites
 
     def _confirm_process_loaded_same_tests(self):
-        loaded_suite_names = mut.COMM_WORLD.gather(self._flattened_suites.keys(), root=0)
+        loaded_suite_names = mut.DISPATCHER_COMM.gather(self._flattened_suites.keys(), root=0)
         if mut.RANK == 0:
             master_suite_names = loaded_suite_names[0]
             if self._debug:
@@ -91,36 +90,48 @@ class MpiTestSuite(suite.TestSuite):
                     if self._debug:
                         logger.log('something failed, \n{} vs.\n{}.\n'
                                    .format(master_suite_names, worker_suite_names))
-                    raise Exception('Worker and master did not load the same tests... this is an issue.')
+                    raise Exception('Worker and dispatcher did not load the same tests... this is an issue.')
 
-    def _run_as_master(self):
-        for suite_name in self._flattened_suites.sorted_suites():
+    def _run_as_dispatcher(self):
+        worker_ranks = [rank for rank in range(mut.SIZE) if rank != mut.DISPATCHER_RANK]
+        for suite_name in self._flattened_suites.parallel_suites:
+            parallel_suite = RunSuiteAction(suite_name)
+            for _ in worker_ranks:
+                actions.RequestWorkAction.add_work(parallel_suite)
+            self._result.testsRun += len(list(self._flattened_suites[suite_name]))
+        self._dispatcher_loop()
+        for suite_name in self._flattened_suites.sorted_suites:
             actions.RequestWorkAction.add_work(RunSuiteAction(suite_name))
-        waiting = [True] + [False for _ in range(1, mut.SIZE)]
-        while actions.RequestWorkAction._backlog or not all(waiting):
-            for rank in range(1, mut.SIZE):
-                if not mut.COMM_WORLD.Iprobe(source=rank):
-                    continue
-                mpi_action = mut.COMM_WORLD.recv(source=rank)
-                if not isinstance(mpi_action, actions.Action):
-                    raise actions.MpiActionError(mpi_action)
-                mpi_action.invoke()
-                if self._debug:
-                    logger.log('backlog: {}, waiting: {}\n'
-                               .format(len(actions.RequestWorkAction._backlog), all(waiting)))
-                waiting[rank] = isinstance(mpi_action, actions.RequestWorkAction)
-        for rank in range(1, mut.SIZE):
-            mut.COMM_WORLD.send(actions.StopAction(), dest=rank)
+        self._dispatcher_loop()
+        for rank in worker_ranks:
+            mut.DISPATCHER_COMM.send(actions.StopAction(), dest=rank)
             if self._debug:
                 logger.log('telling {} to stop.\n'.format(rank))
 
+    def _dispatcher_loop(self):
+        worker_ranks = [rank for rank in range(mut.SIZE) if rank != mut.DISPATCHER_RANK]
+        waiting_workers = {rank:False for rank in worker_ranks}
+        while actions.RequestWorkAction._backlog or not all(waiting_workers.values()):
+            for rank in worker_ranks:
+                if not mut.DISPATCHER_COMM.Iprobe(source=rank):
+                    continue
+                mpi_action = mut.DISPATCHER_COMM.recv(source=rank)
+                if not isinstance(mpi_action, actions.Action):
+                    raise actions.MpiActionError(mpi_action)
+                mpi_action.invoke()
+                waiting_workers[rank] = isinstance(mpi_action, actions.RequestWorkAction)
+            if self._debug:
+                logger.log('backlog: {}, workers are waiting_workers: {}\n'
+                           .format(len(actions.RequestWorkAction._backlog), all(waiting_workers.values())))
+
     def _run_as_worker(self):
         not_done = True
+        logger.log('running as worker')
         while not_done:
             if self._debug:
-                sys.__stderr__.write('waiting...\n')
-            mut.COMM_WORLD.send(actions.RequestWorkAction())
-            action = mut.COMM_WORLD.recv(None, source=0)
+                logger.log('waiting...')
+            mut.DISPATCHER_COMM.send(actions.RequestWorkAction(), dest=mut.DISPATCHER_RANK)
+            action = mut.DISPATCHER_COMM.recv(None, source=mut.DISPATCHER_RANK)
             if self._debug:
                 logger.log('received {}\n'.format(action))
             if not isinstance(action, actions.Action):
@@ -166,3 +177,4 @@ class RunSuiteAction(actions.Action):
             finally:
                 sys.stdout = sys.__stdout__
                 sys.stderr = sys.__stderr__
+

@@ -7,8 +7,8 @@ from unittest import result
 import six
 
 import mut
-from . import actions
-from . import logger
+from mut import actions
+from mut import logger
 
 
 class MpiTestResultHandler(runner.TextTestResult):
@@ -30,7 +30,7 @@ class MpiTestResultHandler(runner.TextTestResult):
      
     def printErrors(self):
         message = ''
-        if mut.RANK != 0:
+        if mut.RANK != mut.DISPATCHER_RANK:
             runner.TextTestResult.printErrors(self)
             message = self.stream.getvalue()
         logger.all_log(message)
@@ -39,21 +39,21 @@ class MpiTestResultHandler(runner.TextTestResult):
         if hasattr(self, 'separator2'):
             self.stream.writeln(self.separator2)
         ran = self.testsRun
-        total_tests = mut.COMM_WORLD.allgather(self.testsRun)
+        total_tests = mut.MPI_WORLD.allgather(self.testsRun)
         msg_prefix = 'Ran '
-        if mut.RANK == 0:
+        if mut.RANK == mut.DISPATCHER_RANK:
             logger.write('\n')
-            ran = sum(total_tests) - total_tests[0] * (mut.SIZE - 1)
+            ran = sum(total_tests) - total_tests[mut.DISPATCHER_RANK] * (mut.SIZE - 1)
             msg_prefix = 'Dispatched a total of '
         msg = '{} test{} in {:.4f}s'.format(ran, (ran != 1) * 's', timeTaken)
-        if total_tests[0] > 1:
+        if total_tests[mut.DISPATCHER_RANK] > 1:
             msg += ', {} tests were parallel.'.format(total_tests[0])
-        elif total_tests[0] > 0:
+        elif total_tests[mut.DISPATCHER_RANK] > 0:
             msg += ', 1 test was parallel.'
         else:
             msg += '.'
         logger.all_log(msg_prefix + msg)
-    
+
     def _printInfos_HASHTAG_BadName(self):
         details = [('failures', mut.mpi_length(self.failures)),
                    ('errors', mut.mpi_length(self.errors)),
@@ -65,7 +65,7 @@ class MpiTestResultHandler(runner.TextTestResult):
         msg = ('{} ({})'
                .format(short_result,
                        ', '.join('{}={}'.format(nn, cc) for nn, cc in details)))
-        if mut.RANK == 0:
+        if mut.RANK == mut.DISPATCHER_RANK:
             msg = 'summary: ' + msg
         logger.all_log(msg)
 
@@ -98,3 +98,4 @@ class MpiTestResultHandler(runner.TextTestResult):
     def addUnexpectedSuccess(self, test):
         runner.TextTestResult.addUnexpectedSuccess(self, test)
         self._flush_stream()
+

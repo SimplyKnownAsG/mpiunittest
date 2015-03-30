@@ -7,7 +7,7 @@ import six
 import timeit
 
 import mut
-from . import results
+from mut import results
 
 
 class MpiTestRunner(runner.TextTestRunner):
@@ -56,3 +56,4 @@ class MpiTestRunner(runner.TextTestRunner):
                 stopTestRun()
         stopTime = timeit.default_timer()
         return stopTime - startTime
+

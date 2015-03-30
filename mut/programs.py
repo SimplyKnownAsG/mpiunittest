@@ -6,15 +6,16 @@ from unittest import loader
 import traceback
 
 import mut
-from . import suites
-from . import runners
+from mut import suites
+from mut import runners
 
 class MpiTestProgram(TestProgram):
 
     def __init__(self, argv):
         loader.TestLoader.suiteClass = suites.MpiTestSuite
         try:
-            if mut.COMM_WORLD.bcast('hi', root=0) != 'hi':
+            mut.take_over_the_world()
+            if mut.DISPATCHER_COMM.bcast('hi', root=0) != 'hi':
                 raise Exception('Could not sync up')
             TestProgram.__init__(self,
                                  exit=False,
@@ -23,6 +24,8 @@ class MpiTestProgram(TestProgram):
         except Exception as ee:
             print('Something bad happened on {}!'.format(mut.RANK))
             traceback.print_exc()
-            if mut.SIZE > 1:
-                print('Killing the rest of MPI!')
-                mut.COMM_WORLD.Abort(-1)
+            print('Killing the rest of MPI!')
+            mut.MPI_WORLD.Abort(-1)
+        finally:
+            mut.prepare_for_tomorrow_night()
+
